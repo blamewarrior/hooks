@@ -1,0 +1,19 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "nosz9CG1azo/ZEmIYhxzKNN2w3c=",
+			"path": "github.com/google/go-github/github",
+			"revision": "9be6ce168fa69a3cc2db27a776950a42d18c2ae0",
+			"revisionTime": "2017-02-25T01:33:15Z"
+		},
+		{
+			"checksumSHA1": "p3IB18uJRs4dL2K5yx24MrLYE9A=",
+			"path": "github.com/google/go-querystring/query",
+			"revision": "53e6ce116135b80d037921a7fdd5138cf32d7a8a",
+			"revisionTime": "2017-01-11T10:11:55Z"
+		}
+	],
+	"rootPath": "github.com/blamewarrior/hooks"
+}
