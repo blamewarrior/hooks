@@ -18,6 +18,7 @@ package github
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -45,8 +46,8 @@ func NewClient(httpClient *http.Client) *Client {
 	return &Client{httpClient: httpClient}
 }
 
-func (c Client) CreateHook(repoFullName, token string) (err error) {
-	owner, name := SplitRepositoryName(repo.FullName)
+func (c Client) CreateHook(hostname, repoFullName, token string) (err error) {
+	owner, name := SplitRepositoryName(repoFullName)
 
 	ctx := context.Background()
 
@@ -58,10 +59,19 @@ func (c Client) CreateHook(repoFullName, token string) (err error) {
 		api.BaseURL = c.BaseURL
 	}
 
-	hook := gh.Hook{}
+	hook := &gh.Hook{
+		Events: []string{"pull_request"},
+		Config: map[string]interface{}{
+			"url":          fmt.Sprintf("https://%s/%s/webhook", hostname, repoFullName),
+			"content_type": "json",
+		},
+	}
 
-	hook, _, err = api.Repositories.CreateHook(ctx, owner, name)
+	*hook.Name = "web"
+	*hook.Active = true
 
+	_, _, err = api.Repositories.CreateHook(ctx, owner, name, hook)
+	return err
 }
 
 // SplitRepositoryName splits full GitHub repository name into owner and name parts.
