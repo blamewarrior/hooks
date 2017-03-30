@@ -15,8 +15,63 @@
 
 package github_test
 
-import "testing"
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"testing"
+	"time"
 
-func TestCreateHook(t *testing.T) {
+	"github.com/blamewarrior/hooks/github"
 
+	api "github.com/google/go-github/github"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestTrackRepository(t *testing.T) {
+	mux, baseURL, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/repos/blamewarrior/hooks/hooks", func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, r.Method, "POST")
+
+		body, err := ioutil.ReadAll(r.Body)
+		require.NoError(t, err)
+
+		var hook api.Hook
+		require.NoError(t, json.Unmarshal(body, &hook), string(body))
+
+		assert.Equal(t, *hook.Name, "web")
+		assert.Contains(t, hook.Events, "pull_request")
+		assert.Equal(t, hook.Config["url"], "https://example.com/blamewarrior/hooks/webhook")
+		assert.True(t, *hook.Active)
+
+		fmt.Fprint(w, `{"id":1}`)
+	})
+
+	httpClient := &http.Client{
+		Timeout: time.Second * 10,
+	}
+
+	client := github.NewClient(httpClient)
+
+	client.BaseURL = baseURL
+
+	err := client.TrackRepository("example.com", "blamewarrior/hooks", "token")
+	require.NoError(t, err)
+
+}
+
+func setup() (mux *http.ServeMux, baseURL *url.URL, teardownFn func()) {
+	mux = http.NewServeMux()
+	server := httptest.NewServer(mux)
+
+	url, _ := url.Parse(server.URL)
+
+	return mux, url, server.Close
 }

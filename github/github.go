@@ -40,13 +40,14 @@ type Client struct {
 	httpClient *http.Client
 }
 
-// NewClient returns a new copy of github.Client that uses given http.Client
+// NewClient returns a new copy of github service that uses given http.Client
 // to make GitHub API requests.
 func NewClient(httpClient *http.Client) *Client {
 	return &Client{httpClient: httpClient}
 }
 
-func (c Client) CreateHook(hostname, repoFullName, token string) (err error) {
+// Tracks repository sets up "pull_request" event to be sent to callback
+func (c Client) TrackRepository(hostname, repoFullName, token string) (err error) {
 	owner, name := SplitRepositoryName(repoFullName)
 
 	ctx := context.Background()
@@ -60,6 +61,8 @@ func (c Client) CreateHook(hostname, repoFullName, token string) (err error) {
 	}
 
 	hook := &gh.Hook{
+		Name:   new(string),
+		Active: new(bool),
 		Events: []string{"pull_request"},
 		Config: map[string]interface{}{
 			"url":          fmt.Sprintf("https://%s/%s/webhook", hostname, repoFullName),
