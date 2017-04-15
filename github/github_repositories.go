@@ -18,7 +18,6 @@ package github
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -33,31 +32,32 @@ var (
 	ErrNoSuchRepository = errors.New("no such repository")
 )
 
-type Client struct {
+type GithubRepositories struct {
 	// BaseURL overrides GitHub API endpoint and is intended for use in tests.
 	BaseURL *url.URL
 
+	token      string
 	httpClient *http.Client
 }
 
-// NewClient returns a new copy of github service that uses given http.Client
+// NewClient returns a new copy of github repositories service that uses given http.Client
 // to make GitHub API requests.
-func NewClient(httpClient *http.Client) *Client {
-	return &Client{httpClient: httpClient}
+func NewGithubRepositories(httpClient *http.Client, token string) *GithubRepositories {
+	return &GithubRepositories{httpClient: httpClient, token: token}
 }
 
-// Tracks repository sets up "pull_request" event to be sent to callback
-func (c Client) TrackRepository(hostname, repoFullName, token string) (err error) {
+// Tracks pull requests sets up "pull_request" event to be sent to callback
+func (service *GithubRepositories) TrackPullRequests(repoFullName, callbackURL string) (err error) {
 	owner, name := SplitRepositoryName(repoFullName)
 
 	ctx := context.Background()
 
-	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: service.token})
 	httpClient := oauth2.NewClient(ctx, tokenSource)
 
 	api := gh.NewClient(httpClient)
-	if c.BaseURL != nil {
-		api.BaseURL = c.BaseURL
+	if service.BaseURL != nil {
+		api.BaseURL = service.BaseURL
 	}
 
 	hook := &gh.Hook{
@@ -65,7 +65,7 @@ func (c Client) TrackRepository(hostname, repoFullName, token string) (err error
 		Active: new(bool),
 		Events: []string{"pull_request"},
 		Config: map[string]interface{}{
-			"url":          fmt.Sprintf("https://%s/%s/webhook", hostname, repoFullName),
+			"url":          callbackURL,
 			"content_type": "json",
 		},
 	}

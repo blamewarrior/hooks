@@ -33,7 +33,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackRepository(t *testing.T) {
+func TestTrackRepositoryPullRequests(t *testing.T) {
 	mux, baseURL, teardown := setup()
 	defer teardown()
 
@@ -58,11 +58,13 @@ func TestTrackRepository(t *testing.T) {
 		Timeout: time.Second * 10,
 	}
 
-	client := github.NewClient(httpClient)
+	githubRepos := github.NewGithubRepositories(httpClient, "token")
 
-	client.BaseURL = baseURL
+	githubRepos.BaseURL = baseURL
 
-	err := client.TrackRepository("example.com", "blamewarrior/hooks", "token")
+	callbackURL := "https://example.com/blamewarrior/hooks/webhook"
+
+	err := githubRepos.TrackPullRequests("blamewarrior/hooks", callbackURL)
 	require.NoError(t, err)
 
 }
