@@ -18,6 +18,7 @@ package github
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -75,6 +76,39 @@ func (service *GithubRepositories) TrackPullRequests(repoFullName, callbackURL s
 
 	_, _, err = api.Repositories.CreateHook(ctx, owner, name, hook)
 	return err
+}
+
+func (service *GithubRepositories) UntrackPullRequests(repoFullName, callbackURL string) (err error) {
+	owner, name := SplitRepositoryName(repoFullName)
+
+	ctx := context.Background()
+
+	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: service.token})
+	httpClient := oauth2.NewClient(ctx, tokenSource)
+
+	api := gh.NewClient(httpClient)
+	if service.BaseURL != nil {
+		api.BaseURL = service.BaseURL
+	}
+
+	hooks, _, err := api.Repositories.ListHooks(ctx, owner, name, nil)
+
+	if err != nil {
+		return err
+	}
+
+	for _, hook := range hooks {
+
+		configURL := hook.Config["url"]
+
+		if strings.Index(*hook.URL, repoFullName) != -1 &&
+			configURL == callbackURL {
+			_, err = api.Repositories.DeleteHook(ctx, owner, name, *hook.ID)
+			return err
+		}
+	}
+
+	return fmt.Errorf("Hook not found")
 }
 
 // SplitRepositoryName splits full GitHub repository name into owner and name parts.

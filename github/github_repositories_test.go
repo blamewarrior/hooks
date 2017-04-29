@@ -69,6 +69,35 @@ func TestTrackRepositoryPullRequests(t *testing.T) {
 
 }
 
+func TestUntrackRepositoryPullRequests(t *testing.T) {
+	mux, baseURL, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/repos/blamewarrior/hooks/hooks", func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, r.Method, "GET")
+
+		fmt.Fprint(w, hooksResponse)
+	})
+
+	mux.HandleFunc("/repos/blamewarrior/hooks/hooks/1", func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, r.Method, "DELETE")
+	})
+
+	httpClient := &http.Client{
+		Timeout: time.Second * 10,
+	}
+
+	githubRepos := github.NewGithubRepositories(httpClient, "token")
+
+	githubRepos.BaseURL = baseURL
+
+	callbackURL := "https://example.com/blamewarrior/hooks/webhook"
+
+	err := githubRepos.UntrackPullRequests("blamewarrior/hooks", callbackURL)
+	require.NoError(t, err)
+
+}
+
 func setup() (mux *http.ServeMux, baseURL *url.URL, teardownFn func()) {
 	mux = http.NewServeMux()
 	server := httptest.NewServer(mux)
@@ -77,3 +106,25 @@ func setup() (mux *http.ServeMux, baseURL *url.URL, teardownFn func()) {
 
 	return mux, url, server.Close
 }
+
+const (
+	hooksResponse = `[
+  {
+    "id": 1,
+    "url": "https://api.github.com/repos/blamewarrior/hooks/hooks/1",
+    "test_url": "https://api.github.com/repos/blamewarrior/hooks/hooks/1/test",
+    "ping_url": "https://api.github.com/repos/blamewarrior/hooks/hooks/1/pings",
+    "name": "web",
+    "events": [
+      "pull_request"
+    ],
+    "active": true,
+    "config": {
+      "url": "https://example.com/blamewarrior/hooks/webhook",
+      "content_type": "json"
+    },
+    "updated_at": "2011-09-06T20:39:23Z",
+    "created_at": "2011-09-06T17:26:27Z"
+  }
+]`
+)
