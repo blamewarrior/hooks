@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 
@@ -37,29 +36,20 @@ type GithubRepositories struct {
 	// BaseURL overrides GitHub API endpoint and is intended for use in tests.
 	BaseURL *url.URL
 
-	token      string
-	httpClient *http.Client
+	token string
 }
 
 // NewClient returns a new copy of github repositories service that uses given http.Client
 // to make GitHub API requests.
-func NewGithubRepositories(httpClient *http.Client, token string) *GithubRepositories {
-	return &GithubRepositories{httpClient: httpClient, token: token}
+func NewGithubRepositories(token string) *GithubRepositories {
+	return &GithubRepositories{token: token}
 }
 
 // Tracks pull requests sets up "pull_request" event to be sent to callback
-func (service *GithubRepositories) TrackPullRequests(repoFullName, callbackURL string) (err error) {
+func (service *GithubRepositories) Track(ctx context.Context, repoFullName, callbackURL string) (err error) {
 	owner, name := SplitRepositoryName(repoFullName)
 
-	ctx := context.Background()
-
-	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: service.token})
-	httpClient := oauth2.NewClient(ctx, tokenSource)
-
-	api := gh.NewClient(httpClient)
-	if service.BaseURL != nil {
-		api.BaseURL = service.BaseURL
-	}
+	api := service.initAPIClient(ctx)
 
 	hook := &gh.Hook{
 		Name:   new(string),
@@ -78,18 +68,10 @@ func (service *GithubRepositories) TrackPullRequests(repoFullName, callbackURL s
 	return err
 }
 
-func (service *GithubRepositories) UntrackPullRequests(repoFullName, callbackURL string) (err error) {
+func (service *GithubRepositories) Untrack(ctx context.Context, repoFullName, callbackURL string) (err error) {
 	owner, name := SplitRepositoryName(repoFullName)
 
-	ctx := context.Background()
-
-	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: service.token})
-	httpClient := oauth2.NewClient(ctx, tokenSource)
-
-	api := gh.NewClient(httpClient)
-	if service.BaseURL != nil {
-		api.BaseURL = service.BaseURL
-	}
+	api := service.initAPIClient(ctx)
 
 	hooks, _, err := api.Repositories.ListHooks(ctx, owner, name, nil)
 
@@ -109,6 +91,19 @@ func (service *GithubRepositories) UntrackPullRequests(repoFullName, callbackURL
 	}
 
 	return fmt.Errorf("Hook not found")
+}
+
+func (service *GithubRepositories) initAPIClient(ctx context.Context) *gh.Client {
+	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: service.token})
+	oauthClient := oauth2.NewClient(ctx, tokenSource)
+
+	api := gh.NewClient(oauthClient)
+	if service.BaseURL != nil {
+		api.BaseURL = service.BaseURL
+	}
+
+	return api
+
 }
 
 // SplitRepositoryName splits full GitHub repository name into owner and name parts.

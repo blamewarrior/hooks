@@ -16,6 +16,7 @@
 package github_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -23,7 +24,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
-	"time"
 
 	"github.com/blamewarrior/hooks/github"
 
@@ -54,17 +54,13 @@ func TestTrackRepositoryPullRequests(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	httpClient := &http.Client{
-		Timeout: time.Second * 10,
-	}
-
-	githubRepos := github.NewGithubRepositories(httpClient, "token")
+	githubRepos := github.NewGithubRepositories("token")
 
 	githubRepos.BaseURL = baseURL
 
 	callbackURL := "https://example.com/blamewarrior/hooks/webhook"
 
-	err := githubRepos.TrackPullRequests("blamewarrior/hooks", callbackURL)
+	err := githubRepos.Track(context.Background(), "blamewarrior/hooks", callbackURL)
 	require.NoError(t, err)
 
 }
@@ -83,17 +79,13 @@ func TestUntrackRepositoryPullRequests(t *testing.T) {
 		require.Equal(t, r.Method, "DELETE")
 	})
 
-	httpClient := &http.Client{
-		Timeout: time.Second * 10,
-	}
-
-	githubRepos := github.NewGithubRepositories(httpClient, "token")
+	githubRepos := github.NewGithubRepositories("token")
 
 	githubRepos.BaseURL = baseURL
 
 	callbackURL := "https://example.com/blamewarrior/hooks/webhook"
 
-	err := githubRepos.UntrackPullRequests("blamewarrior/hooks", callbackURL)
+	err := githubRepos.Untrack(context.Background(), "blamewarrior/hooks", callbackURL)
 	require.NoError(t, err)
 
 }
