@@ -30,8 +30,19 @@ import (
 	api "github.com/google/go-github/github"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+type tokenServiceMock struct {
+	mock.Mock
+}
+
+func (tsMock *tokenServiceMock) GetToken() (string, error) {
+	args := tsMock.Called()
+	return args.String(0), args.Error(1)
+
+}
 
 func TestTrackRepositoryPullRequests(t *testing.T) {
 	mux, baseURL, teardown := setup()
@@ -54,7 +65,11 @@ func TestTrackRepositoryPullRequests(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	githubRepos := github.NewGithubRepositories("token")
+	ts := new(tokenServiceMock)
+
+	ts.On("GetToken").Return("test-token", nil)
+
+	githubRepos := github.NewGithubRepositories(ts)
 
 	githubRepos.BaseURL = baseURL
 
@@ -79,7 +94,11 @@ func TestUntrackRepositoryPullRequests(t *testing.T) {
 		require.Equal(t, r.Method, "DELETE")
 	})
 
-	githubRepos := github.NewGithubRepositories("token")
+	ts := new(tokenServiceMock)
+
+	ts.On("GetToken").Return("test-token", nil)
+
+	githubRepos := github.NewGithubRepositories(ts)
 
 	githubRepos.BaseURL = baseURL
 

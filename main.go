@@ -26,64 +26,76 @@ import (
 	"github.com/bmizerany/pat"
 )
 
-type UsersService interface {
-	GetTokenFor(nickname string) (string, error)
-}
-
 type RepositoriesService interface {
 	Track(ctx context.Context, repoFullName, callbackURL string) error
 	Untrack(ctx context.Context, repoFullName, callbackURL string) error
 }
 
-type RepositoryHandlers struct {
-	repositories RepositoriesService
+type TrackingHandler struct {
+	hostname string
 }
 
-func (handlers *RepositoryHandlers) Track(w http.ResponseWriter, req *http.Request) {
-	token, err := handlers.users.GetToken(username)
+func (handler *TrackingHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+
+	fullName := req.URL.Query().Get(":repo_full_name")
+	username, _ := github.SplitRepositoryName(fullName)
+
+	tokenService := users.NewClient(username)
+
+	repositories := github.NewGithubRepositories(tokenService)
+
+	trackingAction := req.URL.Query().Get(":action")
+
+	err := handler.DoAction(repositories, fullName, trackingAction)
 
 	if err != nil {
-
-	}
-
-	repositories := github.NewGithubRepositories(token)
-
-	err = repositories.Track(
-		context.Background(),
-		repoFullName,
-		fmt.Sprintf("https://blamewarrior.com/%s/webhook", repoFullName),
-	)
-
-	if err != nil {
-
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("%s\t%s\t%v\t%s", "GET", req.RequestURI, http.StatusInternalServerError, err)
 	}
 
 }
 
-func (handlers *RepositoryHandlers) Untrack(w http.ResponseWriter, req *http.Request) {
-	token, err := handlers.users.GetToken(username)
+func (handler *TrackingHandler) DoAction(repos RepositoriesService, repoFullName, action string) (err error) {
+
+	switch action {
+	case "track":
+		err = repos.Track(
+			context.Background(),
+			repoFullName,
+			fmt.Sprintf("https://%s/%s/webhook", handler.hostname, repoFullName),
+		)
+
+		return
+	case "untrack":
+		err = repos.Untrack(
+			context.Background(),
+			repoFullName,
+			fmt.Sprintf("https://%s/%s/webhook", handler.hostname, repoFullName),
+		)
+
+		return
+	default:
+		return fmt.Errorf("Unsupported action %s", action)
+	}
 }
 
-func NewRepositoryHandlers(usersClient *users.Client) {
-	return &RepositoryHandlers{usersClient}
+func NewTrackingHandler(hostname string) *TrackingHandler {
+	return &TrackingHandler{
+		hostname: hostname,
+	}
 }
 
 func main() {
 
-	usersClient := users.NewClient()
-
-	repositoryHandlers := NewRepositoryHandlers(usersClient)
-
 	mux := pat.New()
 
-	mux.Post("/track/:repository_id", http.HandlerFunc(repositoryHandlers.Track))
-	mux.Post("/untrack/:repository_id", http.HandlerFunc(repositoryHandlers.Untrack))
+	mux.Post("/:action/:repo_full_name", NewTrackingHandler("blamewarrior.com"))
 
 	http.Handle("/", mux)
 
 	log.Printf("blamewarrior users is running on 8080 port")
 
-	err = http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		log.Panic(err)
 	}

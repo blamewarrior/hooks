@@ -20,10 +20,10 @@ func TestGetToken(t *testing.T) {
 		w.Write([]byte(userResponse))
 	})
 
-	client := users.NewClient()
+	client := users.NewClient("blamewarrior")
 	client.BaseURL = testAPIEndpoint
 
-	token, err := client.GetTokenFor("blamewarrior")
+	token, err := client.GetToken()
 
 	require.NoError(t, err)
 
