@@ -64,7 +64,6 @@ func (handler *TrackingHandler) DoAction(repos RepositoriesService, repoFullName
 			repoFullName,
 			fmt.Sprintf("https://%s/%s/webhook", handler.hostname, repoFullName),
 		)
-
 		return
 	case "untrack":
 		err = repos.Untrack(
@@ -85,11 +84,39 @@ func NewTrackingHandler(hostname string) *TrackingHandler {
 	}
 }
 
+type TransferHandler struct {
+}
+
+func (handler *TrackingHandler) DoAction(repos RepositoriesService, repoFullName, action string) (err error) {
+
+	switch action {
+	case "track":
+		err = repos.Track(
+			context.Background(),
+			repoFullName,
+			fmt.Sprintf("https://%s/%s/webhook", handler.hostname, repoFullName),
+		)
+		return
+	case "untrack":
+		err = repos.Untrack(
+			context.Background(),
+			repoFullName,
+			fmt.Sprintf("https://%s/%s/webhook", handler.hostname, repoFullName),
+		)
+
+		return
+	default:
+		return fmt.Errorf("Unsupported action %s", action)
+	}
+}
+
 func main() {
 
 	mux := pat.New()
 
 	mux.Post("/:action/:repo_full_name", NewTrackingHandler("blamewarrior.com"))
+
+	mux.Post("/:repo_full_name/webhook", NewTransferHandler())
 
 	http.Handle("/", mux)
 
