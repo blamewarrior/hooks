@@ -17,11 +17,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 
-	"github.com/blamewarrior/hooks/blamewarrior/users"
+	"github.com/blamewarrior/hooks/blamewarrior"
 	"github.com/blamewarrior/hooks/github"
 	"github.com/bmizerany/pat"
 )
@@ -40,7 +44,7 @@ func (handler *TrackingHandler) ServeHTTP(w http.ResponseWriter, req *http.Reque
 	fullName := req.URL.Query().Get(":repo_full_name")
 	username, _ := github.SplitRepositoryName(fullName)
 
-	tokenService := users.NewClient(username)
+	tokenService := blamewarrior.NewUsersClient(username)
 
 	repositories := github.NewGithubRepositories(tokenService)
 
@@ -50,7 +54,7 @@ func (handler *TrackingHandler) ServeHTTP(w http.ResponseWriter, req *http.Reque
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("%s\t%s\t%v\t%s", "GET", req.RequestURI, http.StatusInternalServerError, err)
+		log.Printf("%s\t%s\t%v\t%s", "POST", req.RequestURI, http.StatusInternalServerError, err)
 	}
 
 }
@@ -84,30 +88,37 @@ func NewTrackingHandler(hostname string) *TrackingHandler {
 	}
 }
 
-type TransferHandler struct {
-}
+type HooksPayloadHandler struct{}
 
-func (handler *TrackingHandler) DoAction(repos RepositoriesService, repoFullName, action string) (err error) {
+func (handler *HooksPayloadHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {}
 
-	switch action {
-	case "track":
-		err = repos.Track(
-			context.Background(),
-			repoFullName,
-			fmt.Sprintf("https://%s/%s/webhook", handler.hostname, repoFullName),
-		)
-		return
-	case "untrack":
-		err = repos.Untrack(
-			context.Background(),
-			repoFullName,
-			fmt.Sprintf("https://%s/%s/webhook", handler.hostname, repoFullName),
-		)
+func (handler *HooksPayloadHandler) HandlePayload() error {
+	fullName := req.URL.Query().Get(":repo_full_name")
 
-		return
-	default:
-		return fmt.Errorf("Unsupported action %s", action)
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+
+	payload := new(github.PullRequestPayload)
+
+	if err != nil {
+		return nil, err
 	}
+	if err := r.Body.Close(); err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return errors.New("Unable to unmarshal github hook: %s", body)
+	}
+
+	pullRequests = blamewarrior.NewPullRequestsClient()
+
+	err = pullRequests.Handle(payload)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func main() {
@@ -116,7 +127,7 @@ func main() {
 
 	mux.Post("/:action/:repo_full_name", NewTrackingHandler("blamewarrior.com"))
 
-	mux.Post("/:repo_full_name/webhook", NewTransferHandler())
+	mux.Post("/:repo_full_name/webhook", new(HooksPayloadHandler))
 
 	http.Handle("/", mux)
 

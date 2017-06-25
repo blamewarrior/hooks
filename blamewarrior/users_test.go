@@ -13,15 +13,14 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package users_test
+package blamewarrior_test
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/blamewarrior/hooks/blamewarrior/users"
-
+	"github.com/blamewarrior/hooks/blamewarrior"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +34,7 @@ func TestGetToken(t *testing.T) {
 		w.Write([]byte(userResponse))
 	})
 
-	client := users.NewClient("blamewarrior")
+	client := blamewarrior.NewUsersClient("blamewarrior")
 	client.BaseURL = testAPIEndpoint
 
 	token, err := client.GetToken()

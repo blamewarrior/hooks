@@ -64,7 +64,7 @@ func (service *GithubRepositories) Track(ctx context.Context, repoFullName, call
 	hook := &gh.Hook{
 		Name:   new(string),
 		Active: new(bool),
-		Events: []string{"pull_request"},
+		Events: []string{"pull_request", "pull_request_review"},
 		Config: map[string]interface{}{
 			"url":          callbackURL,
 			"content_type": "json",

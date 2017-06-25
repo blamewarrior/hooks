@@ -13,7 +13,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package users
+package blamewarrior
 
 import (
 	"encoding/json"
@@ -26,14 +26,14 @@ type User struct {
 	Token string `json:"token"`
 }
 
-type Client struct {
+type UsersClient struct {
 	BaseURL string
 	c       *http.Client
 
 	nickname string
 }
 
-func (client *Client) GetToken() (token string, err error) {
+func (client *UsersClient) GetToken() (token string, err error) {
 
 	resp, err := client.c.Get(client.BaseURL + "/users/" + client.nickname)
 
@@ -68,8 +68,8 @@ func (client *Client) GetToken() (token string, err error) {
 	return token, nil
 }
 
-func NewClient(nickname string) *Client {
-	client := &Client{
+func NewUsersClient(nickname string) *UsersClient {
+	client := &UsersClient{
 		BaseURL: "https://blamewarrior.com",
 		c:       http.DefaultClient,
 
