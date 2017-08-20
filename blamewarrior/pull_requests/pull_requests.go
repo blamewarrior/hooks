@@ -12,11 +12,5 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-package github
 
-type GithubUser struct {
-	Login     string `json:"login"`
-	ID        string `json:"id"`
-	URL       string `json:"url"`
-	AvatarURL string `json:"avatar_url"`
-}
+package pull_requests

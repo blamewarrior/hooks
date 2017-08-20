@@ -17,8 +17,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -41,8 +39,10 @@ type TrackingHandler struct {
 
 func (handler *TrackingHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
-	fullName := req.URL.Query().Get(":repo_full_name")
-	username, _ := github.SplitRepositoryName(fullName)
+	username := req.URL.Query().Get(":username")
+	repo := req.URL.Query().Get(":repo")
+
+	fullName := fmt.Sprintf("%s/%s", username, repo)
 
 	tokenService := blamewarrior.NewUsersClient(username)
 
@@ -90,32 +90,31 @@ func NewTrackingHandler(hostname string) *TrackingHandler {
 
 type HooksPayloadHandler struct{}
 
-func (handler *HooksPayloadHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {}
-
-func (handler *HooksPayloadHandler) HandlePayload() error {
-	fullName := req.URL.Query().Get(":repo_full_name")
-
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
-
-	payload := new(github.PullRequestPayload)
-
-	if err != nil {
-		return nil, err
+func (handler *HooksPayloadHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if err := handler.handlePayload(w, req); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("%s\t%s\t%v\t%s", "POST", req.RequestURI, http.StatusInternalServerError, err)
 	}
-	if err := r.Body.Close(); err != nil {
-		return err
-	}
+}
 
-	if err := json.Unmarshal(body, &payload); err != nil {
-		return errors.New("Unable to unmarshal github hook: %s", body)
-	}
+func (handler *HooksPayloadHandler) handlePayload(w http.ResponseWriter, req *http.Request) error {
+	username := req.URL.Query().Get(":username")
+	repo := req.URL.Query().Get(":repo")
 
-	pullRequests = blamewarrior.NewPullRequestsClient()
+	fullName := fmt.Sprintf("%s/%s", username, repo)
 
-	err = pullRequests.Handle(payload)
+	_, err := ioutil.ReadAll(io.LimitReader(req.Body, 1048576))
 
 	if err != nil {
 		return err
+	}
+
+	if err := req.Body.Close(); err != nil {
+		return err
+	}
+
+	if req.Header.Set("X-GitHub-Event", "pull_request") {
+		// send payload to pull requests service handler
 	}
 
 	return nil
@@ -125,9 +124,9 @@ func main() {
 
 	mux := pat.New()
 
-	mux.Post("/:action/:repo_full_name", NewTrackingHandler("blamewarrior.com"))
+	mux.Post("/:action/:username/:repo", NewTrackingHandler("blamewarrior.com"))
 
-	mux.Post("/:repo_full_name/webhook", new(HooksPayloadHandler))
+	mux.Post("/:username/:repo/webhook", new(HooksPayloadHandler))
 
 	http.Handle("/", mux)
 

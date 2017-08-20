@@ -18,9 +18,14 @@ package main_test
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/mock"
 
 	main "github.com/blamewarrior/hooks"
@@ -87,6 +92,28 @@ func TestTrackingHandler_DoAction(t *testing.T) {
 		assert.Equal(t, suits.Err, err)
 	}
 
+}
+
+func TestHooksPayloadHandler(t *testing.T) {
+
+	var requestBody = GithubPullRequestHookBody
+
+	handler := new(main.HooksPayloadHandler)
+
+	req, err := http.NewRequest("POST", "/webhook?:username=blamewarrior_test&:repo=repo_test", strings.NewReader(requestBody))
+	require.NoError(t, err)
+
+	req.Header.Add("X-GitHub-Event", "pull_request")
+
+	http.DefaultClient.Do(req)
+
+	require.NoError(t, err)
+
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
 }
 
 const GithubPullRequestHookBody = `
