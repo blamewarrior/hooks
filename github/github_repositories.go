@@ -32,34 +32,31 @@ var (
 	ErrNoSuchRepository = errors.New("no such repository")
 )
 
-type tokenService interface {
-	GetToken() (string, error)
+type RepositoriesService interface {
+	Track(ctx context.Context, repoFullName, callbackURL string) error
+	Untrack(ctx context.Context, repoFullName, callbackURL string) error
 }
 
 type GithubRepositories struct {
 	// BaseURL overrides GitHub API endpoint and is intended for use in tests.
 	BaseURL *url.URL
 
-	ts tokenService
+	token string
 
 	user string
 }
 
 // NewClient returns a new copy of github repositories service that uses given http.Client
 // to make GitHub API requests.
-func NewGithubRepositories(ts tokenService) *GithubRepositories {
-	return &GithubRepositories{ts: ts}
+func NewGithubRepositories(token string) *GithubRepositories {
+	return &GithubRepositories{token: token}
 }
 
 // Tracks pull requests sets up "pull_request" event to be sent to callback
 func (service *GithubRepositories) Track(ctx context.Context, repoFullName, callbackURL string) (err error) {
 	owner, name := SplitRepositoryName(repoFullName)
 
-	api, err := service.initAPIClient(ctx)
-
-	if err != nil {
-		return err
-	}
+	api := service.initAPIClient(ctx)
 
 	hook := &gh.Hook{
 		Name:   new(string),
@@ -81,11 +78,7 @@ func (service *GithubRepositories) Track(ctx context.Context, repoFullName, call
 func (service *GithubRepositories) Untrack(ctx context.Context, repoFullName, callbackURL string) (err error) {
 	owner, name := SplitRepositoryName(repoFullName)
 
-	api, err := service.initAPIClient(ctx)
-
-	if err != nil {
-		return err
-	}
+	api := service.initAPIClient(ctx)
 
 	hooks, _, err := api.Repositories.ListHooks(ctx, owner, name, nil)
 
@@ -107,15 +100,9 @@ func (service *GithubRepositories) Untrack(ctx context.Context, repoFullName, ca
 	return fmt.Errorf("Hook not found")
 }
 
-func (service *GithubRepositories) initAPIClient(ctx context.Context) (*gh.Client, error) {
+func (service *GithubRepositories) initAPIClient(ctx context.Context) *gh.Client {
 
-	token, err := service.ts.GetToken()
-
-	if err != nil {
-		return nil, fmt.Errorf("unable to get token to init API client: %s", err)
-	}
-
-	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: service.token})
 	oauthClient := oauth2.NewClient(ctx, tokenSource)
 
 	api := gh.NewClient(oauthClient)
@@ -123,7 +110,7 @@ func (service *GithubRepositories) initAPIClient(ctx context.Context) (*gh.Clien
 		api.BaseURL = service.BaseURL
 	}
 
-	return api, nil
+	return api
 
 }
 

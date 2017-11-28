@@ -16,109 +16,11 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 
-	"github.com/blamewarrior/hooks/blamewarrior"
-	"github.com/blamewarrior/hooks/github"
 	"github.com/bmizerany/pat"
 )
-
-type RepositoriesService interface {
-	Track(ctx context.Context, repoFullName, callbackURL string) error
-	Untrack(ctx context.Context, repoFullName, callbackURL string) error
-}
-
-type TrackingHandler struct {
-	hostname string
-}
-
-func (handler *TrackingHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-
-	username := req.URL.Query().Get(":username")
-	repo := req.URL.Query().Get(":repo")
-
-	fullName := fmt.Sprintf("%s/%s", username, repo)
-
-	tokenService := blamewarrior.NewUsersClient(username)
-
-	repositories := github.NewGithubRepositories(tokenService)
-
-	trackingAction := req.URL.Query().Get(":action")
-
-	err := handler.DoAction(repositories, fullName, trackingAction)
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("%s\t%s\t%v\t%s", "POST", req.RequestURI, http.StatusInternalServerError, err)
-	}
-
-}
-
-func (handler *TrackingHandler) DoAction(repos RepositoriesService, repoFullName, action string) (err error) {
-
-	switch action {
-	case "track":
-		err = repos.Track(
-			context.Background(),
-			repoFullName,
-			fmt.Sprintf("https://%s/%s/webhook", handler.hostname, repoFullName),
-		)
-		return
-	case "untrack":
-		err = repos.Untrack(
-			context.Background(),
-			repoFullName,
-			fmt.Sprintf("https://%s/%s/webhook", handler.hostname, repoFullName),
-		)
-
-		return
-	default:
-		return fmt.Errorf("Unsupported action %s", action)
-	}
-}
-
-func NewTrackingHandler(hostname string) *TrackingHandler {
-	return &TrackingHandler{
-		hostname: hostname,
-	}
-}
-
-type HooksPayloadHandler struct{}
-
-func (handler *HooksPayloadHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if err := handler.handlePayload(w, req); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("%s\t%s\t%v\t%s", "POST", req.RequestURI, http.StatusInternalServerError, err)
-	}
-}
-
-func (handler *HooksPayloadHandler) handlePayload(w http.ResponseWriter, req *http.Request) error {
-	username := req.URL.Query().Get(":username")
-	repo := req.URL.Query().Get(":repo")
-
-	fullName := fmt.Sprintf("%s/%s", username, repo)
-
-	_, err := ioutil.ReadAll(io.LimitReader(req.Body, 1048576))
-
-	if err != nil {
-		return err
-	}
-
-	if err := req.Body.Close(); err != nil {
-		return err
-	}
-
-	if req.Header.Set("X-GitHub-Event", "pull_request") {
-		// send payload to pull requests service handler
-	}
-
-	return nil
-}
 
 func main() {
 

@@ -1,98 +1,16 @@
-/*
-   Copyright (C) 2017 The BlameWarrior Authors.
-   This file is a part of BlameWarrior service.
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 package main_test
 
 import (
-	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	main "github.com/blamewarrior/hooks"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/stretchr/testify/mock"
-
-	main "github.com/blamewarrior/hooks"
 )
-
-type RepositoriesServiceMock struct {
-	mock.Mock
-}
-
-func (m *RepositoriesServiceMock) Track(ctx context.Context, repoFullName, callbackURL string) error {
-
-	args := m.Called(ctx, repoFullName, callbackURL)
-	return args.Error(0)
-
-}
-
-func (m *RepositoriesServiceMock) Untrack(ctx context.Context, repoFullName, callbackURL string) error {
-
-	args := m.Called(ctx, repoFullName, callbackURL)
-	return args.Error(0)
-
-}
-
-func TestTrackingHandler_DoAction(t *testing.T) {
-	reposService := new(RepositoriesServiceMock)
-
-	reposService.On(
-		"Track",
-		context.Background(),
-		"blamewarrior/hooks",
-		"https://blamewarrior.com/blamewarrior/hooks/webhook",
-	).Return(nil)
-
-	reposService.On(
-		"Untrack",
-		context.Background(),
-		"blamewarrior/hooks",
-		"https://blamewarrior.com/blamewarrior/hooks/webhook",
-	).Return(nil)
-
-	handler := main.NewTrackingHandler("blamewarrior.com")
-
-	suits := []struct {
-		Action string
-		Err    error
-	}{
-		{
-			"track",
-			nil,
-		},
-		{
-			"untrack",
-			nil,
-		},
-
-		{
-			"custom",
-			errors.New("Unsupported action custom"),
-		},
-	}
-
-	for _, suits := range suits {
-		err := handler.DoAction(reposService, "blamewarrior/hooks", suits.Action)
-		assert.Equal(t, suits.Err, err)
-	}
-
-}
 
 func TestHooksPayloadHandler(t *testing.T) {
 
@@ -114,6 +32,7 @@ func TestHooksPayloadHandler(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
+
 }
 
 const GithubPullRequestHookBody = `
@@ -510,21 +429,21 @@ const GithubPullRequestHookBody = `
     "default_branch": "master"
   },
   "requested_reviewer": {
-    "login": "blamewarrior_user",
-    "id": 6752317,
-    "avatar_url": "https://avatars.githubusercontent.com/u/6752317?v=3",
+    "login": "blamewarrior_second_user",
+    "id": 6752318,
+    "avatar_url": "https://avatars.githubusercontent.com/u/6752318?v=3",
     "gravatar_id": "",
-    "url": "https://api.github.com/users/blamewarrior_user",
-    "html_url": "https://github.com/blamewarrior_user",
-    "followers_url": "https://api.github.com/users/blamewarrior_user/followers",
-    "following_url": "https://api.github.com/users/blamewarrior_user/following{/other_user}",
-    "gists_url": "https://api.github.com/users/blamewarrior_user/gists{/gist_id}",
-    "starred_url": "https://api.github.com/users/blamewarrior_user/starred{/owner}{/repo}",
-    "subscriptions_url": "https://api.github.com/users/blamewarrior_user/subscriptions",
-    "organizations_url": "https://api.github.com/users/blamewarrior_user/orgs",
-    "repos_url": "https://api.github.com/users/blamewarrior_user/repos",
-    "events_url": "https://api.github.com/users/blamewarrior_user/events{/privacy}",
-    "received_events_url": "https://api.github.com/users/blamewarrior_user/received_events",
+    "url": "https://api.github.com/users/blamewarrior_second_user",
+    "html_url": "https://github.com/blamewarrior_second_user",
+    "followers_url": "https://api.github.com/users/blamewarrior_second_user/followers",
+    "following_url": "https://api.github.com/users/blamewarrior_second_user/following{/other_user}",
+    "gists_url": "https://api.github.com/users/blamewarrior_second_user/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/blamewarrior_second_user/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/blamewarrior_second_user/subscriptions",
+    "organizations_url": "https://api.github.com/users/blamewarrior_second_user/orgs",
+    "repos_url": "https://api.github.com/users/blamewarrior_second_user/repos",
+    "events_url": "https://api.github.com/users/blamewarrior_second_user/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/blamewarrior_second_user/received_events",
     "type": "User",
     "site_admin": false
   },
