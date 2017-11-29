@@ -18,7 +18,7 @@ func TestHooksPayloadHandler(t *testing.T) {
 
 	handler := new(main.HooksPayloadHandler)
 
-	req, err := http.NewRequest("POST", "/webhook?:username=blamewarrior_test&:repo=repo_test", strings.NewReader(requestBody))
+	req, err := http.NewRequest("POST", "/webhook?:username=blamewarrior_user&:repo=public-repo", strings.NewReader(requestBody))
 	require.NoError(t, err)
 
 	req.Header.Add("X-GitHub-Event", "pull_request")

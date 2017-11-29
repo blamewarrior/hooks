@@ -20,11 +20,11 @@ func (handler *TrackingHandler) ServeHTTP(w http.ResponseWriter, req *http.Reque
 
 	fullName := fmt.Sprintf("%s/%s", username, repo)
 
-	token := req.Header.Get("X-Github-Token")
+	token := req.Header.Get("X-Token")
 
 	if token == "" {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Invalid github token")
+		fmt.Fprintf(w, "Invalid token")
 		return
 	}
 
