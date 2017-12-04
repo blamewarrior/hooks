@@ -14,9 +14,18 @@
 */
 package github
 
-type GithubUser struct {
-	Login     string `json:"login"`
-	ID        string `json:"id"`
-	URL       string `json:"url"`
-	AvatarURL string `json:"avatar_url"`
+import gh "github.com/google/go-github/github"
+
+type GithubPullRequestUser struct {
+	Id int `json:"id"`
+}
+
+type GithubPullRequestHook struct {
+	PullRequest gh.PullRequest `json:"pull_request"`
+
+	Repository struct {
+		FullName string `json:"full_name"`
+	} `json:"repository"`
+
+	RequestedReviewers []GithubPullRequestUser `json:"requested_reviewers"`
 }

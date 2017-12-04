@@ -1,3 +1,18 @@
+/*
+   Copyright (C) 2017 The BlameWarrior Authors.
+   This file is a part of BlameWarrior service.
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package main
 
 import (
@@ -8,11 +23,13 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/blamewarrior/hooks/blamewarrior"
-	"github.com/blamewarrior/hooks/github"
+	bw "github.com/blamewarrior/hooks/blamewarrior"
+	gh "github.com/blamewarrior/hooks/github"
 )
 
-type HooksPayloadHandler struct{}
+type HooksPayloadHandler struct {
+	pullRequestPublisher bw.PullRequestPublisher
+}
 
 func (handler *HooksPayloadHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err := handler.handlePayload(w, req); err != nil {
@@ -41,12 +58,12 @@ func (handler *HooksPayloadHandler) handlePayload(w http.ResponseWriter, req *ht
 
 	switch event {
 	case "pull_request":
-		ghPullRequestHook := new(github.GithubPullRequestHook)
+		ghPullRequestHook := new(gh.GithubPullRequestHook)
 		err = json.Unmarshal(respBytes, &ghPullRequestHook)
 
 		hookRepositoryName := ghPullRequestHook.Repository.FullName
 
-		if hookRepositoryName != fullName {
+		if ghPullRequestHook.Repository.FullName != fullName {
 			w.WriteHeader(http.StatusBadRequest)
 			log.Printf("%s\t%s\t%v\t%s",
 				"POST",
@@ -57,29 +74,14 @@ func (handler *HooksPayloadHandler) handlePayload(w http.ResponseWriter, req *ht
 			)
 		}
 
-		pullRequest := &blamewarrior.PullRequest{
-			Id:             *ghPullRequestHook.PullRequest.ID,
-			HTMLURL:        *ghPullRequestHook.PullRequest.HTMLURL,
-			Title:          *ghPullRequestHook.PullRequest.Title,
-			Body:           *ghPullRequestHook.PullRequest.Body,
-			Number:         *ghPullRequestHook.PullRequest.Number,
-			State:          *ghPullRequestHook.PullRequest.State,
-			CreatedAt:      ghPullRequestHook.PullRequest.CreatedAt,
-			ClosedAt:       ghPullRequestHook.PullRequest.ClosedAt,
-			Commits:        *ghPullRequestHook.PullRequest.Commits,
-			Additions:      *ghPullRequestHook.PullRequest.Additions,
-			Deletions:      *ghPullRequestHook.PullRequest.Deletions,
-			RepositoryName: hookRepositoryName,
-			OwnerId:        *ghPullRequestHook.PullRequest.User.ID,
+		pullRequest := bw.NewPullRequestFromGithubHook(ghPullRequestHook)
+
+		if err := json.NewEncoder(w).Encode(pullRequest); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Error when unmarshalling json")
+			return nil
 		}
 
-		if ghPullRequestHook.RequestedReviewer != nil {
-			pullRequest.ReviewerIds = []int{ghPullRequestHook.RequestedReviewer.Id}
-		}
-
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }

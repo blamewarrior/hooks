@@ -1,6 +1,22 @@
+/*
+   Copyright (C) 2017 The BlameWarrior Authors.
+   This file is a part of BlameWarrior service.
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package main_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,11 +30,14 @@ import (
 
 func TestHooksPayloadHandler(t *testing.T) {
 
-	var requestBody = GithubPullRequestHookBody
-
 	handler := new(main.HooksPayloadHandler)
 
-	req, err := http.NewRequest("POST", "/webhook?:username=blamewarrior_user&:repo=public-repo", strings.NewReader(requestBody))
+	req, err := http.NewRequest(
+		"POST",
+		"/webhook?:username=blamewarrior_user&:repo=public-repo",
+		strings.NewReader(GithubPullRequestHookBody),
+	)
+
 	require.NoError(t, err)
 
 	req.Header.Add("X-GitHub-Event", "pull_request")
@@ -32,6 +51,9 @@ func TestHooksPayloadHandler(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
+	assert.Equal(t,
+		"{\"id\":34778301,\"html_url\":\"https://github.com/blamewarrior_user/public-repo/pull/1\",\"title\":\"Update the README with new information\",\"body\":\"This is a pretty simple change that we need to pull into master.\",\"repository_name\":\"blamewarrior_user/public-repo\",\"reviewer_ids\":[6752318],\"number\":1,\"state\":\"open\",\"opened_at\":\"2015-05-05T23:40:27Z\",\"closed_at\":null,\"owner_id\":6752317,\"commits\":1,\"additions\":1,\"deletions\":1}\n",
+		fmt.Sprintf("%v", w.Body))
 
 }
 
@@ -428,7 +450,7 @@ const GithubPullRequestHookBody = `
     "watchers": 0,
     "default_branch": "master"
   },
-  "requested_reviewer": {
+  "requested_reviewers": [{
     "login": "blamewarrior_second_user",
     "id": 6752318,
     "avatar_url": "https://avatars.githubusercontent.com/u/6752318?v=3",
@@ -446,7 +468,7 @@ const GithubPullRequestHookBody = `
     "received_events_url": "https://api.github.com/users/blamewarrior_second_user/received_events",
     "type": "User",
     "site_admin": false
-  },
+  }],
   "installation": {
     "id": 234
   }

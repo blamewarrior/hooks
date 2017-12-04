@@ -32,7 +32,7 @@ var (
 	ErrNoSuchRepository = errors.New("no such repository")
 )
 
-type RepositoriesService interface {
+type Repositories interface {
 	Track(ctx context.Context, repoFullName, callbackURL string) error
 	Untrack(ctx context.Context, repoFullName, callbackURL string) error
 }
