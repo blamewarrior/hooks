@@ -16,12 +16,9 @@
 package blamewarrior
 
 import (
-	"encoding/json"
 	"time"
 
 	gh "github.com/blamewarrior/hooks/github"
-
-	"github.com/go-redis/redis"
 )
 
 type PullRequest struct {
@@ -67,35 +64,4 @@ func NewPullRequestFromGithubHook(ghPullRequestHook *gh.GithubPullRequestHook) *
 	}
 
 	return pullRequest
-}
-
-type PullRequests interface {
-	Save(pullRequest *PullRequest) (res *Result, err error)
-}
-
-type PullRequestRepository struct {
-	redisClient *redis.Client
-}
-
-func (repository *PullRequestRepository) Save(pullRequest *PullRequest) (res *DBResponse, err error) {
-
-	b, err := json.Marshal(pullRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	key := pullRequest.RepositoryName + ":pull_requests"
-
-	res = &Result{
-		Object:     pullRequest,
-		ValueBytes: b,
-	}
-
-	err = repository.redisClient.LPush(key, b).Err()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return
 }

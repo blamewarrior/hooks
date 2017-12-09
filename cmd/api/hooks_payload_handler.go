@@ -72,6 +72,7 @@ func (handler *HooksPayloadHandler) handlePayload(w http.ResponseWriter, req *ht
 				fmt.Sprintf("hooks repository name doesn't match with url pattern: %s != %s",
 					hookRepositoryName, fullName),
 			)
+			return
 		}
 
 		pullRequest := bw.NewPullRequestFromGithubHook(ghPullRequestHook)
