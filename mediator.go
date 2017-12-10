@@ -15,51 +15,59 @@
 
 package hooks
 
-// var SendingError = fmt.Errorf("sending error")
+import (
+	"bytes"
+	"fmt"
+	"net/http"
 
-// type Mediator interface {
-// 	Mediate(payload string) (err error)
-// }
+	"github.com/blamewarrior/hooks"
+)
 
-// type MediatorService struct {
-// 	ConsumerBaseURL string
-// 	c               *http.Client
+var SendingError = fmt.Errorf("sending error")
 
-// 	hooks hooks.Hooks
-// }
+type Mediator interface {
+	Mediate(payload string) (err error)
+}
 
-// func (service *PullRequestPublishService) Mediate(payload string) (err error) {
+type MediatorService struct {
+	ConsumerBaseURL string
+	c               *http.Client
 
-// 	if position, result, err = service.pullRequests.Save(pullRequest); err != nil {
-// 		return err
-// 	}
+	payloads hooks.Payloads
+}
 
-// 	err = service.send(result.ValueBytes)
+func (service *PullRequestPublishService) Mediate(payload string) (err error) {
 
-// 	if err = service.pullRequests.Delete(pullRequest); err != nil {
-// 		return err
-// 	}
+	if position, result, err = service.pullRequests.Save(pullRequest); err != nil {
+		return err
+	}
 
-// 	return nil
-// }
+	err = service.send(result.ValueBytes)
 
-// func (service *PullRequestPublisher) send(payload []byte) (err error) {
+	if err != nil {
 
-// 	response, err := service.c.Post(
-// 		service.ConsumerBaseURL+"/process_hook",
-// 		"application/json",
-// 		bytes.NewBuffer(payload),
-// 	)
+	}
 
-// 	if err != nil {
-// 		return err
-// 	}
+	return nil
+}
 
-// 	if response.StatusCode != http.StatusOK {
-// 		return SendingError
-// 	}
-// }
+func (service *PullRequestPublisher) send(payload []byte) (err error) {
 
-// func (service *PullRequestPublishService) assignReviewer(pullRequest *PullRequest) error {
-// 	return nil
-// }
+	response, err := service.c.Post(
+		service.ConsumerBaseURL+"/process_hook",
+		"application/json",
+		bytes.NewBuffer(payload),
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return SendingError
+	}
+}
+
+func (service *PullRequestPublishService) assignReviewer(pullRequest *PullRequest) error {
+	return nil
+}
