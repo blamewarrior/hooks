@@ -35,15 +35,13 @@ func TestSavePayload(t *testing.T) {
 
 	payloadRepo := hooks.NewPayloadRepository(redisClient)
 
-	testRepo := "blamewarrior/test"
-
 	testPayload := "test_payload"
 
-	err := payloadRepo.Save(testRepo, testPayload)
+	err := payloadRepo.Save(testPayload)
 
 	require.NoError(t, err)
 
-	val, err := redisClient.LRange(testRepo, 0, 0).Result()
+	val, err := redisClient.LRange("hooks", 0, 0).Result()
 	require.NoError(t, err)
 	require.Equal(t, 1, len(val))
 	assert.Equal(t, testPayload, val[0])
@@ -54,15 +52,14 @@ func TestListPayload(t *testing.T) {
 
 	defer teardown()
 
-	testRepo := "blamewarrior/test"
 	testPayload := "test_payload"
 
-	err := createTestPayload(redisClient, testRepo, testPayload)
+	err := createTestPayload(redisClient, testPayload)
 	require.NoError(t, err)
 
 	payloadRepo := hooks.NewPayloadRepository(redisClient)
 
-	list, err := payloadRepo.List(testRepo, int64(2))
+	list, err := payloadRepo.List(int64(2))
 	require.NoError(t, err)
 	require.Equal(t, 1, len(list))
 	require.Equal(t, testPayload, list[0])
@@ -73,25 +70,24 @@ func TestDeletePayload(t *testing.T) {
 
 	defer teardown()
 
-	testRepo := "blamewarrior/test"
 	testPayload := "test_payload"
 
-	err := createTestPayload(redisClient, testRepo, testPayload)
+	err := createTestPayload(redisClient, testPayload)
 	require.NoError(t, err)
 
 	payloadRepo := hooks.NewPayloadRepository(redisClient)
 
-	err = payloadRepo.Delete(testRepo, testPayload)
+	err = payloadRepo.Delete(testPayload)
 	require.NoError(t, err)
 
-	val, err := redisClient.LRange(testRepo, 0, 0).Result()
+	val, err := redisClient.LRange("hooks", 0, 0).Result()
 	require.NoError(t, err)
 
 	assert.Empty(t, val)
 }
 
-func createTestPayload(client *redis.Client, testRepo, testPayload string) error {
-	return client.LPush(testRepo, testPayload).Err()
+func createTestPayload(client *redis.Client, testPayload string) error {
+	return client.LPush("hooks", testPayload).Err()
 }
 
 func setup() (client *redis.Client, teardownFn func()) {

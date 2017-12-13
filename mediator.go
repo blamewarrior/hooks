@@ -17,6 +17,7 @@ package hooks
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -36,10 +37,21 @@ type MediatorService struct {
 	payloads hooks.Payloads
 }
 
-func (service *PullRequestPublishService) Mediate(payload string) (err error) {
+func (service *MediatorService) Mediate(event string, payload []byte) (err error) {
 
-	if position, result, err = service.pullRequests.Save(pullRequest); err != nil {
-		return err
+	switch event {
+	case "pull_request":
+		ghPullRequestHook := new(gh.GithubPullRequestHook)
+		err = json.Unmarshal(payload, &ghPullRequestHook)
+
+		hookRepositoryName := ghPullRequestHook.Repository.FullName
+
+		pullRequest := bw.NewPullRequestFromGithubHook(ghPullRequestHook)
+
+		listCollaborators := collaborators.GetCollaboratorsFor(hookRepositoryName)
+
+		collaboratorIds := service.pickCollaborators(listCollaborators)
+
 	}
 
 	err = service.send(result.ValueBytes)
@@ -51,7 +63,7 @@ func (service *PullRequestPublishService) Mediate(payload string) (err error) {
 	return nil
 }
 
-func (service *PullRequestPublisher) send(payload []byte) (err error) {
+func (service *MediatorService) send(payload []byte) (err error) {
 
 	response, err := service.c.Post(
 		service.ConsumerBaseURL+"/process_hook",
@@ -68,6 +80,6 @@ func (service *PullRequestPublisher) send(payload []byte) (err error) {
 	}
 }
 
-func (service *PullRequestPublishService) assignReviewer(pullRequest *PullRequest) error {
+func (service *MediatorService) pickCollaborators(collaborators []Collaborator) error {
 	return nil
 }

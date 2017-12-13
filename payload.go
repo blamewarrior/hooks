@@ -20,9 +20,9 @@ import (
 )
 
 type Payloads interface {
-	Save(repositoryFullName, payload string) error
-	List(repositoryFullName string, limit int) ([]string, error)
-	Delete(repositoryFullName, payload string) error
+	Save(payload string) error
+	List(limit int) ([]string, error)
+	Delete(payload string) error
 }
 
 type PayloadRepository struct {
@@ -33,14 +33,14 @@ func NewPayloadRepository(redisClient *redis.Client) *PayloadRepository {
 	return &PayloadRepository{redisClient}
 }
 
-func (repo *PayloadRepository) Save(repositoryFullName, payload string) (err error) {
-	return repo.redisClient.LPush(repositoryFullName, payload).Err()
+func (repo *PayloadRepository) Save(payload string) (err error) {
+	return repo.redisClient.LPush("hooks", payload).Err()
 }
 
-func (repo *PayloadRepository) List(repositoryFullName string, limit int64) ([]string, error) {
-	return repo.redisClient.LRange(repositoryFullName, 0, limit).Result()
+func (repo *PayloadRepository) List(limit int64) ([]string, error) {
+	return repo.redisClient.LRange("hooks", 0, limit).Result()
 }
 
-func (repo *PayloadRepository) Delete(repositoryFullName, payload string) error {
-	return repo.redisClient.LRem(repositoryFullName, 0, payload).Err()
+func (repo *PayloadRepository) Delete(payload string) error {
+	return repo.redisClient.LRem("hooks", 0, payload).Err()
 }

@@ -23,12 +23,13 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/blamewarrior/hooks"
 	bw "github.com/blamewarrior/hooks/blamewarrior"
 	gh "github.com/blamewarrior/hooks/github"
 )
 
 type HooksPayloadHandler struct {
-	pullRequestPublisher bw.PullRequestPublisher
+	mediator hooks.Mediator
 }
 
 func (handler *HooksPayloadHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
