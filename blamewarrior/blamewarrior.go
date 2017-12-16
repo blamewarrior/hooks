@@ -21,21 +21,44 @@ import (
 	gh "github.com/blamewarrior/hooks/github"
 )
 
+type Collaborator struct {
+	Id int `json:"id"`
+}
+
 type PullRequest struct {
-	Id             int        `json:"id"`
-	HTMLURL        string     `json:"html_url"`
-	Title          string     `json:"title"`
-	Body           string     `json:"body"`
-	RepositoryName string     `json:"repository_name"`
-	ReviewerIds    []int      `json:"reviewer_ids"`
-	Number         int        `json:"number"`
-	State          string     `json:"state"`
-	CreatedAt      *time.Time `json:"opened_at"`
-	ClosedAt       *time.Time `json:"closed_at"`
-	OwnerId        int        `json:"owner_id"`
-	Commits        int        `json:"commits"`
-	Additions      int        `json:"additions"`
-	Deletions      int        `json:"deletions"`
+	Id             int            `json:"id"`
+	HTMLURL        string         `json:"html_url"`
+	Title          string         `json:"title"`
+	Body           string         `json:"body"`
+	RepositoryName string         `json:"repository_name"`
+	Reviewers      []Collaborator `json:"reviewers"`
+	Number         int            `json:"number"`
+	State          string         `json:"state"`
+	CreatedAt      *time.Time     `json:"opened_at"`
+	ClosedAt       *time.Time     `json:"closed_at"`
+	OwnerId        int            `json:"owner_id"`
+	Commits        int            `json:"commits"`
+	Additions      int            `json:"additions"`
+	Deletions      int            `json:"deletions"`
+}
+
+func (pullRequet *PullRequest) Valid() *Validator {
+	v := new(Validator)
+
+	v.MustNotBeZero(pullRequet.Id, "id must not be empty")
+	v.MustNotBeZero(pullRequet.OwnerId, "owner_id must not be empty")
+	v.MustNotBeZero(pullRequet.Number, "number must not be empty")
+	v.MustNotBeEmpty(pullRequet.Title, "title must not be empty")
+	v.MustNotBeEmpty(pullRequet.RepositoryName, "repository name must not be empty")
+	v.MustNotBeEmpty(pullRequet.State, "state must not be empty")
+
+	reviewers := make([]interface{}, len(pullRequet.Reviewers))
+	for i, v := range pullRequet.Reviewers {
+		reviewers[i] = v
+	}
+	v.MustNotBeZeroLength(reviewers, "reviewers must not be empty")
+
+	return v
 }
 
 func NewPullRequestFromGithubHook(ghPullRequestHook *gh.GithubPullRequestHook) *PullRequest {
@@ -58,8 +81,10 @@ func NewPullRequestFromGithubHook(ghPullRequestHook *gh.GithubPullRequestHook) *
 	requestedReviewers := ghPullRequestHook.RequestedReviewers
 
 	if len(requestedReviewers) > 0 {
+		pullRequest.Reviewers = make([]Collaborator, 0)
 		for _, reviewer := range requestedReviewers {
-			pullRequest.ReviewerIds = append(pullRequest.ReviewerIds, reviewer.Id)
+			reviewer := &Collaborator{Id: reviewer.Id}
+			pullRequest.Reviewers = append(pullRequest.Reviewers, *reviewer)
 		}
 	}
 

@@ -13,34 +13,44 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package hooks
+package web
 
 import (
-	"github.com/go-redis/redis"
+	"fmt"
+	"net/http"
+
+	bw "github.com/blamewarrior/hooks/blamewarrior"
 )
 
-type Payloads interface {
-	Save(payload string) error
-	List(limit int) ([]string, error)
-	Delete(payload string) error
+type Client struct {
+	BaseURL string
+	c       *http.Client
 }
 
-type PayloadRepository struct {
-	redisClient *redis.Client
+func NewClient() *Client {
+	client := &Client{
+		BaseURL: "https://blamewarrior.com",
+		c:       http.DefaultClient,
+	}
+
+	return client
 }
 
-func NewPayloadRepository(redisClient *redis.Client) *PayloadRepository {
-	return &PayloadRepository{redisClient}
-}
+func (client *Client) ProcessPullRequest(pullRequest *bw.PullRequest) (err error) {
 
-func (repo *PayloadRepository) Save(payload string) (err error) {
-	return repo.redisClient.LPush("hooks", payload).Err()
-}
+	repositoryName := pullRequest.RepositoryName
 
-func (repo *PayloadRepository) List(limit int64) ([]string, error) {
-	return repo.redisClient.LRange("hooks", 0, limit).Result()
-}
+	requestUrl := fmt.Sprintf("%s/api/%s/pull_requests/process", client.BaseURL, repositoryName)
 
-func (repo *PayloadRepository) Delete(payload string) error {
-	return repo.redisClient.LRem("hooks", 0, payload).Err()
+	response, err := client.c.Get(requestUrl)
+
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("Impossible to process hook for %s", repositoryName)
+	}
+
+	return nil
 }
