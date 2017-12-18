@@ -16,19 +16,25 @@
 package web
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	bw "github.com/blamewarrior/hooks/blamewarrior"
 )
 
-type Client struct {
+type Client interface {
+	ProcessPullRequest(pullRequest *bw.PullRequest) (err error)
+}
+
+type WebClient struct {
 	BaseURL string
 	c       *http.Client
 }
 
-func NewClient() *Client {
-	client := &Client{
+func NewClient() *WebClient {
+	client := &WebClient{
 		BaseURL: "https://blamewarrior.com",
 		c:       http.DefaultClient,
 	}
@@ -36,20 +42,27 @@ func NewClient() *Client {
 	return client
 }
 
-func (client *Client) ProcessPullRequest(pullRequest *bw.PullRequest) (err error) {
+func (client *WebClient) ProcessPullRequest(pullRequest *bw.PullRequest) (err error) {
 
-	repositoryName := pullRequest.RepositoryName
+	repositoryFullName := pullRequest.RepositoryName
 
-	requestUrl := fmt.Sprintf("%s/api/%s/pull_requests/process", client.BaseURL, repositoryName)
+	requestUrl := fmt.Sprintf("%s/api/%s/pull_requests/process", client.BaseURL, repositoryFullName)
 
-	response, err := client.c.Get(requestUrl)
+	b, err := json.Marshal(pullRequest)
+
+	if err != nil {
+		return err
+	}
+
+	response, err := client.c.Post(requestUrl, "application/json", bytes.NewBuffer(b))
 
 	if err != nil {
 		return err
 	}
 
 	if response.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("Impossible to process hook for %s", repositoryName)
+
+		return fmt.Errorf("Impossible to process hook for %s, status_code=%d", repositoryFullName, response.StatusCode)
 	}
 
 	return nil

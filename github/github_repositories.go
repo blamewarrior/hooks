@@ -113,13 +113,3 @@ func (service *GithubRepositories) initAPIClient(ctx context.Context) *gh.Client
 	return api
 
 }
-
-// SplitRepositoryName splits full GitHub repository name into owner and name parts.
-func SplitRepositoryName(fullName string) (owner, repo string) {
-	sep := strings.IndexByte(fullName, '/')
-	if sep <= 0 || sep == len(fullName)-1 {
-		return "", ""
-	}
-
-	return fullName[0:sep], fullName[sep+1:]
-}

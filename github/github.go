@@ -14,10 +14,24 @@
 */
 package github
 
-import gh "github.com/google/go-github/github"
+import (
+	"context"
+	"net/url"
+	"strings"
 
-type GithubPullRequestUser struct {
-	Id int `json:"id"`
+	gh "github.com/google/go-github/github"
+)
+
+type Context struct {
+	context.Context
+
+	BaseURL *url.URL
+}
+
+type Collaborator struct {
+	Id    int    `json:"id"`
+	Login string `json:"login"`
+	Admin bool   `json:"admin"`
 }
 
 type GithubPullRequestHook struct {
@@ -27,5 +41,15 @@ type GithubPullRequestHook struct {
 		FullName string `json:"full_name"`
 	} `json:"repository"`
 
-	RequestedReviewers []GithubPullRequestUser `json:"requested_reviewers"`
+	RequestedReviewers []Collaborator `json:"requested_reviewers"`
+}
+
+// SplitRepositoryName splits full GitHub repository name into owner and name parts.
+func SplitRepositoryName(fullName string) (owner, repo string) {
+	sep := strings.IndexByte(fullName, '/')
+	if sep <= 0 || sep == len(fullName)-1 {
+		return "", ""
+	}
+
+	return fullName[0:sep], fullName[sep+1:]
 }

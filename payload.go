@@ -21,7 +21,7 @@ import (
 
 type Payloads interface {
 	Save(payload string) error
-	List(limit int) ([]string, error)
+	List(limit int64) ([]string, error)
 	Delete(payload string) error
 }
 

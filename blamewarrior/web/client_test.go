@@ -17,13 +17,18 @@ package web_test
 
 import (
 	"errors"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	bw "github.com/blamewarrior/hooks/blamewarrior"
 	"github.com/blamewarrior/hooks/blamewarrior/web"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	gh "github.com/blamewarrior/hooks/github"
 )
 
 func TestProcessPullRequest(t *testing.T) {
@@ -33,13 +38,21 @@ func TestProcessPullRequest(t *testing.T) {
 		ResponseError  error
 	}{
 		{ResponseStatus: http.StatusNoContent, ResponseError: nil},
-		{ResponseStatus: http.StatusNotFound, ResponseError: errors.New("Impossible to process hook for blamewarrior/test_repo")},
+		{ResponseStatus: http.StatusNotFound, ResponseError: errors.New("Impossible to process hook for blamewarrior/test_repo, status_code=404")},
 	}
 
 	for _, result := range results {
 		testAPIEndpoint, mux, teardown := setup()
 
 		mux.HandleFunc("/api/blamewarrior/test_repo/pull_requests/process", func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "POST", r.Method)
+
+			bodyBytes, _ := ioutil.ReadAll(r.Body)
+
+			require.Equal(t,
+				"{\"id\":123,\"html_url\":\"\",\"title\":\"bug fixes\",\"body\":\"\",\"repository_name\":\"blamewarrior/test_repo\",\"reviewers\":[{\"id\":2,\"login\":\"test_user\",\"admin\":true}],\"number\":12,\"state\":\"open\",\"opened_at\":null,\"closed_at\":null,\"owner_id\":1,\"commits\":0,\"additions\":0,\"deletions\":0}",
+				string(bodyBytes))
+
 			w.WriteHeader(result.ResponseStatus)
 		})
 
@@ -53,8 +66,8 @@ func TestProcessPullRequest(t *testing.T) {
 			Title:          "bug fixes",
 			State:          "open",
 			RepositoryName: "blamewarrior/test_repo",
-			Reviewers: []bw.Collaborator{
-				{Id: 2},
+			Reviewers: []gh.Collaborator{
+				{Id: 2, Admin: true, Login: "test_user"},
 			},
 		}
 

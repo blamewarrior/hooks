@@ -14,3 +14,59 @@
 */
 
 package collaborators
+
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+
+	gh "github.com/blamewarrior/hooks/github"
+)
+
+type Client interface {
+	GetCollaborators(repositoryFullName string) ([]gh.Collaborator, error)
+}
+
+type CollaboratorsClient struct {
+	BaseURL string
+	c       *http.Client
+}
+
+func NewClient() *CollaboratorsClient {
+	client := &CollaboratorsClient{
+		BaseURL: "https://blamewarrior.com",
+		c:       http.DefaultClient,
+	}
+
+	return client
+}
+
+func (client *CollaboratorsClient) GetCollaborators(repositoryFullName string) ([]gh.Collaborator, error) {
+
+	requestUrl := fmt.Sprintf("%s/%s/collaborators", client.BaseURL, repositoryFullName)
+
+	response, err := client.c.Get(requestUrl)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Unable to get collaborators for %s, status_code=%d", repositoryFullName, response.StatusCode)
+	}
+
+	bodyBytes, err := ioutil.ReadAll(response.Body)
+
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get response for %s", repositoryFullName)
+	}
+
+	collaborators := make([]gh.Collaborator, 0)
+
+	if err = json.Unmarshal(bodyBytes, &collaborators); err != nil {
+		return nil, fmt.Errorf("Unable to unmarshal income json for %s, income=%s", repositoryFullName, string(bodyBytes))
+	}
+
+	return collaborators, nil
+}

@@ -21,28 +21,26 @@ import (
 	gh "github.com/blamewarrior/hooks/github"
 )
 
-type Collaborator struct {
-	Id int `json:"id"`
-}
-
 type PullRequest struct {
-	Id             int            `json:"id"`
-	HTMLURL        string         `json:"html_url"`
-	Title          string         `json:"title"`
-	Body           string         `json:"body"`
-	RepositoryName string         `json:"repository_name"`
-	Reviewers      []Collaborator `json:"reviewers"`
-	Number         int            `json:"number"`
-	State          string         `json:"state"`
-	CreatedAt      *time.Time     `json:"opened_at"`
-	ClosedAt       *time.Time     `json:"closed_at"`
-	OwnerId        int            `json:"owner_id"`
-	Commits        int            `json:"commits"`
-	Additions      int            `json:"additions"`
-	Deletions      int            `json:"deletions"`
+	Id             int               `json:"id"`
+	HTMLURL        string            `json:"html_url"`
+	Title          string            `json:"title"`
+	Body           string            `json:"body"`
+	RepositoryName string            `json:"repository_name"`
+	Reviewers      []gh.Collaborator `json:"reviewers"`
+	Number         int               `json:"number"`
+	State          string            `json:"state"`
+	CreatedAt      *time.Time        `json:"opened_at"`
+	ClosedAt       *time.Time        `json:"closed_at"`
+	OwnerId        int               `json:"owner_id"`
+	Commits        int               `json:"commits"`
+	Additions      int               `json:"additions"`
+	Deletions      int               `json:"deletions"`
+
+	ReviewComments string `json:"review_comments"`
 }
 
-func (pullRequet *PullRequest) Valid() *Validator {
+func (pullRequet *PullRequest) Validate() *Validator {
 	v := new(Validator)
 
 	v.MustNotBeZero(pullRequet.Id, "id must not be empty")
@@ -81,10 +79,9 @@ func NewPullRequestFromGithubHook(ghPullRequestHook *gh.GithubPullRequestHook) *
 	requestedReviewers := ghPullRequestHook.RequestedReviewers
 
 	if len(requestedReviewers) > 0 {
-		pullRequest.Reviewers = make([]Collaborator, 0)
+		pullRequest.Reviewers = make([]gh.Collaborator, 0)
 		for _, reviewer := range requestedReviewers {
-			reviewer := &Collaborator{Id: reviewer.Id}
-			pullRequest.Reviewers = append(pullRequest.Reviewers, *reviewer)
+			pullRequest.Reviewers = append(pullRequest.Reviewers, reviewer)
 		}
 	}
 
