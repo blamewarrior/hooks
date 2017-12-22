@@ -26,7 +26,7 @@ func main() {
 
 	mux := pat.New()
 
-	mux.Post("/:action/:username/:repo", NewTrackingHandler("0de0e053.ngrok.io"))
+	mux.Post("/:action/:username/:repo", NewTrackingHandler("blamewarrior.com"))
 
 	mux.Post("/:username/:repo/webhook", new(HooksPayloadHandler))
 

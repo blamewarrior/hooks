@@ -20,7 +20,7 @@ import (
 	"errors"
 	"testing"
 
-	main "github.com/blamewarrior/hooks"
+	main "github.com/blamewarrior/hooks/cmd/api"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

@@ -31,7 +31,7 @@ import (
 var SendingError = fmt.Errorf("sending error")
 
 type Mediator interface {
-	Mediate(payload string) (err error)
+	Mediate(event string, payload []byte) (err error)
 }
 
 type MediatorService struct {

@@ -16,20 +16,20 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 
 	"github.com/blamewarrior/hooks"
-	bw "github.com/blamewarrior/hooks/blamewarrior"
-	gh "github.com/blamewarrior/hooks/github"
 )
 
 type HooksPayloadHandler struct {
 	mediator hooks.Mediator
+}
+
+func NewHooksPayloadHandler(mediator hooks.Mediator) *HooksPayloadHandler {
+	return &HooksPayloadHandler{mediator}
 }
 
 func (handler *HooksPayloadHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -40,10 +40,6 @@ func (handler *HooksPayloadHandler) ServeHTTP(w http.ResponseWriter, req *http.R
 }
 
 func (handler *HooksPayloadHandler) handlePayload(w http.ResponseWriter, req *http.Request) error {
-	username := req.URL.Query().Get(":username")
-	repo := req.URL.Query().Get(":repo")
-
-	fullName := fmt.Sprintf("%s/%s", username, repo)
 
 	respBytes, err := ioutil.ReadAll(io.LimitReader(req.Body, 1048576))
 
@@ -57,33 +53,7 @@ func (handler *HooksPayloadHandler) handlePayload(w http.ResponseWriter, req *ht
 
 	event := req.Header.Get("X-GitHub-Event")
 
-	switch event {
-	case "pull_request":
-		ghPullRequestHook := new(gh.GithubPullRequestHook)
-		err = json.Unmarshal(respBytes, &ghPullRequestHook)
+	err = handler.mediator.Mediate(event, respBytes)
 
-		hookRepositoryName := ghPullRequestHook.Repository.FullName
-
-		if ghPullRequestHook.Repository.FullName != fullName {
-			w.WriteHeader(http.StatusBadRequest)
-			log.Printf("%s\t%s\t%v\t%s",
-				"POST",
-				req.RequestURI,
-				http.StatusBadRequest,
-				fmt.Sprintf("hooks repository name doesn't match with url pattern: %s != %s",
-					hookRepositoryName, fullName),
-			)
-			return
-		}
-
-		pullRequest := bw.NewPullRequestFromGithubHook(ghPullRequestHook)
-
-		if err := json.NewEncoder(w).Encode(pullRequest); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "Error when unmarshalling json")
-			return nil
-		}
-
-	}
-	return nil
+	return err
 }
