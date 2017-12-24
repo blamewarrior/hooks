@@ -19,10 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
-
-	"golang.org/x/oauth2"
 
 	gh "github.com/google/go-github/github"
 )
@@ -38,30 +35,24 @@ type Repositories interface {
 }
 
 type GithubRepositories struct {
-	// BaseURL overrides GitHub API endpoint and is intended for use in tests.
-	BaseURL *url.URL
-
-	token string
-
-	user string
 }
 
 // NewClient returns a new copy of github repositories service that uses given http.Client
 // to make GitHub API requests.
-func NewGithubRepositories(token string) *GithubRepositories {
-	return &GithubRepositories{token: token}
+func NewGithubRepositories() *GithubRepositories {
+	return &GithubRepositories{}
 }
 
 // Tracks pull requests sets up "pull_request" event to be sent to callback
-func (service *GithubRepositories) Track(ctx context.Context, repoFullName, callbackURL string) (err error) {
+func (service *GithubRepositories) Track(ctx Context, repoFullName, callbackURL string) (err error) {
 	owner, name := SplitRepositoryName(repoFullName)
 
-	api := service.initAPIClient(ctx)
+	api := initAPIClient(ctx)
 
 	hook := &gh.Hook{
 		Name:   new(string),
 		Active: new(bool),
-		Events: []string{"pull_request", "pull_request_review"},
+		Events: []string{"pull_request", "member"},
 		Config: map[string]interface{}{
 			"url":          callbackURL,
 			"content_type": "json",
@@ -75,10 +66,10 @@ func (service *GithubRepositories) Track(ctx context.Context, repoFullName, call
 	return err
 }
 
-func (service *GithubRepositories) Untrack(ctx context.Context, repoFullName, callbackURL string) (err error) {
+func (service *GithubRepositories) Untrack(ctx Context, repoFullName, callbackURL string) (err error) {
 	owner, name := SplitRepositoryName(repoFullName)
 
-	api := service.initAPIClient(ctx)
+	api := initAPIClient(ctx)
 
 	hooks, _, err := api.Repositories.ListHooks(ctx, owner, name, nil)
 
@@ -98,18 +89,4 @@ func (service *GithubRepositories) Untrack(ctx context.Context, repoFullName, ca
 	}
 
 	return fmt.Errorf("Hook not found")
-}
-
-func (service *GithubRepositories) initAPIClient(ctx context.Context) *gh.Client {
-
-	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: service.token})
-	oauthClient := oauth2.NewClient(ctx, tokenSource)
-
-	api := gh.NewClient(oauthClient)
-	if service.BaseURL != nil {
-		api.BaseURL = service.BaseURL
-	}
-
-	return api
-
 }

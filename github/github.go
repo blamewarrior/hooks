@@ -19,13 +19,18 @@ import (
 	"net/url"
 	"strings"
 
+	"golang.org/x/oauth2"
+
 	gh "github.com/google/go-github/github"
 )
 
 type Context struct {
 	context.Context
 
+	// BaseURL overrides GitHub API endpoint and is intended for use in tests.
 	BaseURL *url.URL
+
+	Token string
 }
 
 type Collaborator struct {
@@ -33,6 +38,8 @@ type Collaborator struct {
 	Login string `json:"login"`
 	Admin bool   `json:"admin"`
 }
+
+type ReviewComment gh.PullRequestComment
 
 type GithubPullRequestHook struct {
 	PullRequest gh.PullRequest `json:"pull_request"`
@@ -42,6 +49,8 @@ type GithubPullRequestHook struct {
 	} `json:"repository"`
 
 	RequestedReviewers []Collaborator `json:"requested_reviewers"`
+
+	ReviewComments []ReviewComment `json:"review_comments"`
 }
 
 // SplitRepositoryName splits full GitHub repository name into owner and name parts.
@@ -52,4 +61,18 @@ func SplitRepositoryName(fullName string) (owner, repo string) {
 	}
 
 	return fullName[0:sep], fullName[sep+1:]
+}
+
+func initAPIClient(ctx Context) *gh.Client {
+
+	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ctx.Token})
+	oauthClient := oauth2.NewClient(ctx, tokenSource)
+
+	api := gh.NewClient(oauthClient)
+	if ctx.BaseURL != nil {
+		api.BaseURL = ctx.BaseURL
+	}
+
+	return api
+
 }

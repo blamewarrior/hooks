@@ -65,17 +65,17 @@ func TestTrackRepositoryPullRequests(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	ts := new(tokenServiceMock)
+	// ts := new(tokenServiceMock)
 
-	ts.On("GetToken").Return("test-token", nil)
+	// ts.On("GetToken").Return("test-token", nil)
 
 	githubRepos := github.NewGithubRepositories(ts)
 
-	githubRepos.BaseURL = baseURL
-
 	callbackURL := "https://example.com/blamewarrior/hooks/webhook"
 
-	err := githubRepos.Track(context.Background(), "blamewarrior/hooks", callbackURL)
+	ctx := github.Context{context.Background(), baseURL, "test-token"}
+
+	err := githubRepos.Track(ctx, "blamewarrior/hooks", callbackURL)
 	require.NoError(t, err)
 
 }
