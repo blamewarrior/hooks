@@ -24,6 +24,7 @@ import (
 
 	bw "github.com/blamewarrior/hooks/blamewarrior"
 	"github.com/blamewarrior/hooks/blamewarrior/collaborators"
+	"github.com/blamewarrior/hooks/blamewarrior/tokens"
 	"github.com/blamewarrior/hooks/blamewarrior/web"
 	gh "github.com/blamewarrior/hooks/github"
 )
@@ -42,8 +43,8 @@ type MediatorService struct {
 
 	webClient           web.Client
 	collaboratorsClient collaborators.Client
-
-	reviewers gh.Reviewers
+	tokenClient         tokens.Client
+	reviewersClient     gh.Reviewers
 }
 
 func NewMediatorService(
@@ -53,7 +54,7 @@ func NewMediatorService(
 		payloads:            payloads,
 		webClient:           webClient,
 		collaboratorsClient: collaboratorsClient,
-		reviewers:           reviewers,
+		reviewersClient:     reviewers,
 	}
 }
 
@@ -91,7 +92,7 @@ func (service *MediatorService) handlePullRequestPayload(payload []byte) (err er
 
 		pullRequest.Reviewers = reviewers
 
-		if err = service.reviewers.AssignReviewers(hookRepositoryName, reviewers); err != nil {
+		if err = service.reviewersClient.RequestReviewers(gh.Context{}); err != nil {
 			return err
 		}
 	}

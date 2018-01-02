@@ -67,14 +67,14 @@ type ReviewersServiceMock struct {
 	mock.Mock
 }
 
-func (m *ReviewersServiceMock) AssignReviewers(repositoryFullName string, reviewers []gh.Collaborator) (err error) {
+func (m *ReviewersServiceMock) RequestReviewers(ctx gh.Context) (err error) {
 	args := m.Called()
 	return args.Error(0)
 }
 
-func (m *ReviewersServiceMock) ReviewComments(commentsURl string) (string, error) {
+func (m *ReviewersServiceMock) ReviewComments(ctx gh.Context) ([]gh.ReviewComment, error) {
 	args := m.Called()
-	return args.String(0), args.Error(1)
+	return args.Get(0).([]gh.ReviewComment), args.Error(1)
 }
 
 func TestHooksMediator_Mediate_HooksWithAssignedReviewers(t *testing.T) {
@@ -128,7 +128,7 @@ func TestHooksMediator_Mediate_HooksWithAssignedReviewers(t *testing.T) {
 	webClientMock.On("ProcessPullRequest", pullRequest).Return(nil)
 
 	reviewersService := new(ReviewersServiceMock)
-	reviewersService.On("AssignReviewers", collaborators[0:])
+	reviewersService.On("RequestReviewers", collaborators[0:])
 
 	m := hooks.NewMediatorService(payloadServiceMock, webClientMock, collaboratorsClientMock, reviewersService)
 	m.Mediate("pull_request", []byte(pullRequestHookPayload))

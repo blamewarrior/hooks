@@ -37,7 +37,7 @@ type PullRequest struct {
 	Additions      int               `json:"additions"`
 	Deletions      int               `json:"deletions"`
 
-	ReviewComments string `json:"review_comments"`
+	ReviewComments []gh.ReviewComment `json:"review_comments"`
 }
 
 func (pullRequet *PullRequest) Validate() *Validator {
@@ -76,14 +76,7 @@ func NewPullRequestFromGithubHook(ghPullRequestHook *gh.GithubPullRequestHook) *
 		OwnerId:        *ghPullRequestHook.PullRequest.User.ID,
 	}
 
-	requestedReviewers := ghPullRequestHook.RequestedReviewers
-
-	if len(requestedReviewers) > 0 {
-		pullRequest.Reviewers = make([]gh.Collaborator, 0)
-		for _, reviewer := range requestedReviewers {
-			pullRequest.Reviewers = append(pullRequest.Reviewers, reviewer)
-		}
-	}
+	pullRequest.Reviewers = ghPullRequestHook.RequestedReviewers
 
 	return pullRequest
 }

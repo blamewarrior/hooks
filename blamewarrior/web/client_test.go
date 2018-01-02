@@ -50,7 +50,7 @@ func TestProcessPullRequest(t *testing.T) {
 			bodyBytes, _ := ioutil.ReadAll(r.Body)
 
 			require.Equal(t,
-				"{\"id\":123,\"html_url\":\"\",\"title\":\"bug fixes\",\"body\":\"\",\"repository_name\":\"blamewarrior/test_repo\",\"reviewers\":[{\"id\":2,\"login\":\"test_user\",\"admin\":true}],\"number\":12,\"state\":\"open\",\"opened_at\":null,\"closed_at\":null,\"owner_id\":1,\"commits\":0,\"additions\":0,\"deletions\":0}",
+				"{\"id\":123,\"html_url\":\"\",\"title\":\"bug fixes\",\"body\":\"\",\"repository_name\":\"blamewarrior/test_repo\",\"reviewers\":[{\"id\":2,\"login\":\"test_user\",\"admin\":true}],\"number\":12,\"state\":\"open\",\"opened_at\":null,\"closed_at\":null,\"owner_id\":1,\"commits\":0,\"additions\":0,\"deletions\":0,\"review_comments\":null}",
 				string(bodyBytes))
 
 			w.WriteHeader(result.ResponseStatus)

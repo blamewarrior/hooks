@@ -16,21 +16,20 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"strings"
 
 	"golang.org/x/oauth2"
 
+	"github.com/blamewarrior/hooks/blamewarrior/tokens"
 	gh "github.com/google/go-github/github"
 )
 
 type Context struct {
 	context.Context
-
 	// BaseURL overrides GitHub API endpoint and is intended for use in tests.
 	BaseURL *url.URL
-
-	Token string
 }
 
 type Collaborator struct {
@@ -63,9 +62,15 @@ func SplitRepositoryName(fullName string) (owner, repo string) {
 	return fullName[0:sep], fullName[sep+1:]
 }
 
-func initAPIClient(ctx Context) *gh.Client {
+func initAPIClient(ctx Context, tokenClient tokens.Client) (*gh.Client, error) {
 
-	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ctx.Token})
+	token, err := tokenClient.GetToken()
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to get token to init API client: %s", err)
+	}
+
+	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	oauthClient := oauth2.NewClient(ctx, tokenSource)
 
 	api := gh.NewClient(oauthClient)
@@ -73,6 +78,6 @@ func initAPIClient(ctx Context) *gh.Client {
 		api.BaseURL = ctx.BaseURL
 	}
 
-	return api
+	return api, nil
 
 }

@@ -65,15 +65,15 @@ func TestTrackRepositoryPullRequests(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	// ts := new(tokenServiceMock)
+	ts := new(tokenServiceMock)
 
-	// ts.On("GetToken").Return("test-token", nil)
+	ts.On("GetToken").Return("test-token", nil)
 
 	githubRepos := github.NewGithubRepositories(ts)
 
 	callbackURL := "https://example.com/blamewarrior/hooks/webhook"
 
-	ctx := github.Context{context.Background(), baseURL, "test-token"}
+	ctx := github.Context{context.Background(), baseURL}
 
 	err := githubRepos.Track(ctx, "blamewarrior/hooks", callbackURL)
 	require.NoError(t, err)
@@ -100,11 +100,11 @@ func TestUntrackRepositoryPullRequests(t *testing.T) {
 
 	githubRepos := github.NewGithubRepositories(ts)
 
-	githubRepos.BaseURL = baseURL
+	ctx := github.Context{context.Background(), baseURL}
 
 	callbackURL := "https://example.com/blamewarrior/hooks/webhook"
 
-	err := githubRepos.Untrack(context.Background(), "blamewarrior/hooks", callbackURL)
+	err := githubRepos.Untrack(ctx, "blamewarrior/hooks", callbackURL)
 	require.NoError(t, err)
 
 }
@@ -113,7 +113,7 @@ func setup() (mux *http.ServeMux, baseURL *url.URL, teardownFn func()) {
 	mux = http.NewServeMux()
 	server := httptest.NewServer(mux)
 
-	url, _ := url.Parse(server.URL)
+	url, _ := url.Parse(fmt.Sprintf("%s/", server.URL))
 
 	return mux, url, server.Close
 }

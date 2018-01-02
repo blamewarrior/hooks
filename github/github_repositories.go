@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/blamewarrior/hooks/blamewarrior/tokens"
 	gh "github.com/google/go-github/github"
 )
 
@@ -35,19 +36,23 @@ type Repositories interface {
 }
 
 type GithubRepositories struct {
+	tokenClient tokens.Client
 }
 
 // NewClient returns a new copy of github repositories service that uses given http.Client
 // to make GitHub API requests.
-func NewGithubRepositories() *GithubRepositories {
-	return &GithubRepositories{}
+func NewGithubRepositories(tokenClient tokens.Client) *GithubRepositories {
+	return &GithubRepositories{tokenClient}
 }
 
 // Tracks pull requests sets up "pull_request" event to be sent to callback
 func (service *GithubRepositories) Track(ctx Context, repoFullName, callbackURL string) (err error) {
 	owner, name := SplitRepositoryName(repoFullName)
 
-	api := initAPIClient(ctx)
+	api, err := initAPIClient(ctx, service.tokenClient)
+	if err != nil {
+		return err
+	}
 
 	hook := &gh.Hook{
 		Name:   new(string),
@@ -69,7 +74,10 @@ func (service *GithubRepositories) Track(ctx Context, repoFullName, callbackURL 
 func (service *GithubRepositories) Untrack(ctx Context, repoFullName, callbackURL string) (err error) {
 	owner, name := SplitRepositoryName(repoFullName)
 
-	api := initAPIClient(ctx)
+	api, err := initAPIClient(ctx, service.tokenClient)
+	if err != nil {
+		return err
+	}
 
 	hooks, _, err := api.Repositories.ListHooks(ctx, owner, name, nil)
 
