@@ -44,18 +44,16 @@ func TestGithubReviewers_RequestReviewers(t *testing.T) {
 
 	pullRequestNumber := 1347
 
-	hook := &github.GithubPullRequestHook{}
-	hook.PullRequest.Number = &pullRequestNumber
-	hook.Repository.FullName = "octocat/Hello-World"
-	hook.RequestedReviewers = []github.Collaborator{
+	repoFullName := "octocat/Hello-World"
+	requestedReviewers := []github.Collaborator{
 		{Id: 2, Admin: true, Login: "test_user"},
 	}
 
-	githubReviewers := github.NewGithubReviewers(ts, hook)
+	githubReviewers := github.NewGithubReviewers(ts)
 
 	ctx := github.Context{context.Background(), baseURL}
 
-	err := githubReviewers.RequestReviewers(ctx)
+	err := githubReviewers.RequestReviewers(ctx, repoFullName, pullRequestNumber, requestedReviewers)
 	require.NoError(t, err)
 }
 
@@ -77,18 +75,13 @@ func TestGithubReviewers_ReviewComments(t *testing.T) {
 
 	pullRequestNumber := 1347
 
-	hook := &github.GithubPullRequestHook{}
-	hook.PullRequest.Number = &pullRequestNumber
-	hook.Repository.FullName = "octocat/Hello-World"
-	hook.RequestedReviewers = []github.Collaborator{
-		{Id: 2, Admin: true, Login: "test_user"},
-	}
+	repoFullName := "octocat/Hello-World"
 
-	githubReviewers := github.NewGithubReviewers(ts, hook)
+	githubReviewers := github.NewGithubReviewers(ts)
 
 	ctx := github.Context{context.Background(), baseURL}
 
-	comments, err := githubReviewers.ReviewComments(ctx)
+	comments, err := githubReviewers.ReviewComments(ctx, repoFullName, pullRequestNumber)
 	require.NoError(t, err)
 
 	require.NotEmpty(t, comments)

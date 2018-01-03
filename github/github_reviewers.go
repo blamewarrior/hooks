@@ -21,23 +21,19 @@ import (
 )
 
 type Reviewers interface {
-	RequestReviewers(ctx Context) (err error)
-	ReviewComments(ctx Context) ([]ReviewComment, error)
+	RequestReviewers(ctx Context, repoFullName string, pullNumber int, reviewers []Collaborator) (err error)
+	ReviewComments(ctx Context, repoFullName string, pullNumber int) ([]ReviewComment, error)
 }
 
 type GithubReviewers struct {
-	tokenClient     tokens.Client
-	pullRequestHook *GithubPullRequestHook
+	tokenClient tokens.Client
 }
 
-func NewGithubReviewers(tokenClient tokens.Client, hook *GithubPullRequestHook) *GithubReviewers {
-	return &GithubReviewers{tokenClient, hook}
+func NewGithubReviewers(tokenClient tokens.Client) *GithubReviewers {
+	return &GithubReviewers{tokenClient}
 }
 
-func (service *GithubReviewers) RequestReviewers(ctx Context) (err error) {
-	repositoryFullName := service.pullRequestHook.Repository.FullName
-	reviewers := service.pullRequestHook.RequestedReviewers
-	number := service.pullRequestHook.PullRequest.Number
+func (service *GithubReviewers) RequestReviewers(ctx Context, repoFullName string, pullNumber int, reviewers []Collaborator) (err error) {
 
 	reviewersRequest := gh.ReviewersRequest{}
 
@@ -50,9 +46,9 @@ func (service *GithubReviewers) RequestReviewers(ctx Context) (err error) {
 		return err
 	}
 
-	owner, repo := SplitRepositoryName(repositoryFullName)
+	owner, repo := SplitRepositoryName(repoFullName)
 
-	_, _, err = api.PullRequests.RequestReviewers(ctx, owner, repo, *number, reviewersRequest)
+	_, _, err = api.PullRequests.RequestReviewers(ctx, owner, repo, pullNumber, reviewersRequest)
 
 	if err != nil {
 		return err
@@ -61,19 +57,16 @@ func (service *GithubReviewers) RequestReviewers(ctx Context) (err error) {
 	return nil
 }
 
-func (service *GithubReviewers) ReviewComments(ctx Context) ([]ReviewComment, error) {
-	repositoryFullName := service.pullRequestHook.Repository.FullName
-
-	number := service.pullRequestHook.PullRequest.Number
+func (service *GithubReviewers) ReviewComments(ctx Context, repoFullName string, pullNumber int) ([]ReviewComment, error) {
 
 	api, err := initAPIClient(ctx, service.tokenClient)
 	if err != nil {
 		return nil, err
 	}
 
-	owner, repo := SplitRepositoryName(repositoryFullName)
+	owner, repo := SplitRepositoryName(repoFullName)
 
-	ghComments, _, err := api.PullRequests.ListComments(ctx, owner, repo, *number, nil)
+	ghComments, _, err := api.PullRequests.ListComments(ctx, owner, repo, pullNumber, nil)
 	if err != nil {
 		return nil, err
 	}
