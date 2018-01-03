@@ -16,11 +16,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
 
+	"github.com/blamewarrior/hooks/blamewarrior/tokens"
 	"github.com/blamewarrior/hooks/github"
 )
 
@@ -35,15 +35,9 @@ func (handler *TrackingHandler) ServeHTTP(w http.ResponseWriter, req *http.Reque
 
 	fullName := fmt.Sprintf("%s/%s", username, repo)
 
-	token := req.Header.Get("X-Token")
+	tokenClient := tokens.NewTokenClient("blamewarrior")
 
-	if token == "" {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Invalid token")
-		return
-	}
-
-	repositories := github.NewGithubRepositories(token)
+	repositories := github.NewGithubRepositories(tokenClient)
 
 	trackingAction := req.URL.Query().Get(":action")
 
@@ -61,14 +55,14 @@ func (handler *TrackingHandler) DoAction(repos github.Repositories, repoFullName
 	switch action {
 	case "track":
 		err = repos.Track(
-			context.Background(),
+			github.Context{},
 			repoFullName,
 			fmt.Sprintf("https://%s/%s/webhook", handler.hostname, repoFullName),
 		)
 		return
 	case "untrack":
 		err = repos.Untrack(
-			context.Background(),
+			github.Context{},
 			repoFullName,
 			fmt.Sprintf("https://%s/%s/webhook", handler.hostname, repoFullName),
 		)

@@ -84,7 +84,7 @@ func (service *MediatorService) handlePullRequestPayload(payload []byte) (err er
 
 	pullRequest := bw.NewPullRequestFromGithubHook(ghPullRequestHook)
 
-	if len(pullRequest.Reviewers) == 0 && pullRequest.State == "open" {
+	if len(pullRequest.Reviewers) == 0 {
 		listCollaborators, err := service.collaboratorsClient.GetCollaborators(hookRepositoryName)
 
 		reviewer := service.pickCollaboratorFrom(listCollaborators)
@@ -99,7 +99,9 @@ func (service *MediatorService) handlePullRequestPayload(payload []byte) (err er
 		); err != nil {
 			return err
 		}
-	} else {
+	}
+
+	if pullRequest.State != "open" {
 		comments, err := service.reviewersClient.ReviewComments(gh.Context{},
 			hookRepositoryName,
 			pullRequest.Number,

@@ -16,7 +16,6 @@
 package github
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -31,8 +30,8 @@ var (
 )
 
 type Repositories interface {
-	Track(ctx context.Context, repoFullName, callbackURL string) error
-	Untrack(ctx context.Context, repoFullName, callbackURL string) error
+	Track(ctx Context, repoFullName, callbackURL string) error
+	Untrack(ctx Context, repoFullName, callbackURL string) error
 }
 
 type GithubRepositories struct {

@@ -1,4 +1,4 @@
-PACKAGES := $$(go list ./... | grep -v /vendor/ | grep -v /cmd/)
+PACKAGES := $$(go list ./... | grep -v /vendor/)
 
 test:
 	@echo "Running tests..."

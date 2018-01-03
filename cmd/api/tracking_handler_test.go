@@ -16,11 +16,11 @@
 package main_test
 
 import (
-	"context"
 	"errors"
 	"testing"
 
 	main "github.com/blamewarrior/hooks/cmd/api"
+	"github.com/blamewarrior/hooks/github"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -30,14 +30,14 @@ type RepositoriesServiceMock struct {
 	mock.Mock
 }
 
-func (m *RepositoriesServiceMock) Track(ctx context.Context, repoFullName, callbackURL string) error {
+func (m *RepositoriesServiceMock) Track(ctx github.Context, repoFullName, callbackURL string) error {
 
 	args := m.Called(ctx, repoFullName, callbackURL)
 	return args.Error(0)
 
 }
 
-func (m *RepositoriesServiceMock) Untrack(ctx context.Context, repoFullName, callbackURL string) error {
+func (m *RepositoriesServiceMock) Untrack(ctx github.Context, repoFullName, callbackURL string) error {
 
 	args := m.Called(ctx, repoFullName, callbackURL)
 	return args.Error(0)
@@ -49,14 +49,14 @@ func TestTrackingHandler_DoAction(t *testing.T) {
 
 	reposService.On(
 		"Track",
-		context.Background(),
+		github.Context{},
 		"blamewarrior/hooks",
 		"https://blamewarrior.com/blamewarrior/hooks/webhook",
 	).Return(nil)
 
 	reposService.On(
 		"Untrack",
-		context.Background(),
+		github.Context{},
 		"blamewarrior/hooks",
 		"https://blamewarrior.com/blamewarrior/hooks/webhook",
 	).Return(nil)
