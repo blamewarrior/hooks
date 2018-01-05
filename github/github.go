@@ -52,6 +52,15 @@ type GithubPullRequestHook struct {
 	ReviewComments []ReviewComment `json:"review_comments"`
 }
 
+type GithubMemberHook struct {
+	Action string       `json:"action"`
+	Member Collaborator `json:"member"`
+
+	Repository struct {
+		FullName string `json:"full_name"`
+	} `json:"repository"`
+}
+
 // SplitRepositoryName splits full GitHub repository name into owner and name parts.
 func SplitRepositoryName(fullName string) (owner, repo string) {
 	sep := strings.IndexByte(fullName, '/')

@@ -8,13 +8,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/blamewarrior/hooks/blamewarrior/collaborators"
 
 	gh "github.com/blamewarrior/hooks/github"
 )
 
-func TestGetCollaborators(t *testing.T) {
+func TestListCollaborator(t *testing.T) {
 	results := []struct {
 		ResponseStatus int
 		Collaborators  []gh.Collaborator
@@ -41,10 +42,75 @@ func TestGetCollaborators(t *testing.T) {
 		client := collaborators.NewClient()
 		client.BaseURL = testAPIEndpoint
 
-		collaborators, err := client.GetCollaborators("blamewarrior/test_repo")
+		collaborators, err := client.ListCollaborator("blamewarrior/test_repo")
 
 		assert.Equal(t, result.ResponseError, err)
 		assert.Equal(t, result.Collaborators, collaborators)
+
+		teardown()
+	}
+}
+
+func TestAddCollaborator(t *testing.T) {
+	results := []struct {
+		ResponseStatus int
+		Collaborator   *gh.Collaborator
+		ResponseError  error
+	}{
+		{ResponseStatus: http.StatusCreated, Collaborator: &gh.Collaborator{Id: 123, Admin: true, Login: "test_user"}, ResponseError: nil},
+		{ResponseStatus: http.StatusInternalServerError, Collaborator: nil, ResponseError: errors.New(
+			"Unable to add collaborator for blamewarrior/test_repo, status_code=500",
+		)},
+	}
+
+	for _, result := range results {
+		testAPIEndpoint, mux, teardown := setup()
+
+		mux.HandleFunc("/blamewarrior/test_repo/collaborators", func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "POST", r.Method)
+			w.WriteHeader(result.ResponseStatus)
+			fmt.Fprint(w, `[{
+                    "id": 123,
+                    "admin": true,
+                    "login": "test_user"
+                }]`)
+		})
+
+		client := collaborators.NewClient()
+		client.BaseURL = testAPIEndpoint
+
+		err := client.AddCollaborator("blamewarrior/test_repo", result.Collaborator)
+		assert.Equal(t, result.ResponseError, err)
+
+		teardown()
+	}
+}
+
+func TestDeleteCollaborator(t *testing.T) {
+	results := []struct {
+		ResponseStatus int
+		Collaborator   *gh.Collaborator
+		ResponseError  error
+	}{
+		{ResponseStatus: http.StatusNoContent, Collaborator: &gh.Collaborator{Id: 123, Admin: true, Login: "test_user"}, ResponseError: nil},
+		{ResponseStatus: http.StatusInternalServerError, Collaborator: &gh.Collaborator{Id: 123, Admin: true, Login: "test_user"}, ResponseError: errors.New(
+			"Unable to delete collaborator for blamewarrior/test_repo, status_code=500",
+		)},
+	}
+
+	for _, result := range results {
+		testAPIEndpoint, mux, teardown := setup()
+
+		mux.HandleFunc("/blamewarrior/test_repo/collaborators/"+result.Collaborator.Login, func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "DELETE", r.Method)
+			w.WriteHeader(result.ResponseStatus)
+		})
+
+		client := collaborators.NewClient()
+		client.BaseURL = testAPIEndpoint
+
+		err := client.DeleteCollaborator("blamewarrior/test_repo", result.Collaborator.Login)
+		assert.Equal(t, result.ResponseError, err)
 
 		teardown()
 	}

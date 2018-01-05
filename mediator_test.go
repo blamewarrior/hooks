@@ -16,6 +16,7 @@
 package hooks_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -58,9 +59,24 @@ type CollaboratorsClientMock struct {
 	mock.Mock
 }
 
-func (m *CollaboratorsClientMock) GetCollaborators(repositoryFullName string) ([]gh.Collaborator, error) {
+func (m *CollaboratorsClientMock) ListCollaborator(repositoryFullName string) ([]gh.Collaborator, error) {
 	args := m.Called(repositoryFullName)
 	return args.Get(0).([]gh.Collaborator), args.Error(1)
+}
+
+func (m *CollaboratorsClientMock) AddCollaborator(repositoryFullName string, collaborator *gh.Collaborator) error {
+	args := m.Called(repositoryFullName, collaborator)
+	return args.Error(0)
+}
+
+func (m *CollaboratorsClientMock) EditCollaborator(repositoryFullName string, collaborator *gh.Collaborator) error {
+	args := m.Called(repositoryFullName, collaborator)
+	return args.Error(0)
+}
+
+func (m *CollaboratorsClientMock) DeleteCollaborator(repositoryFullName, login string) error {
+	args := m.Called(repositoryFullName, login)
+	return args.Error(0)
 }
 
 type ReviewersServiceMock struct {
@@ -137,7 +153,7 @@ func TestHooksMediator_Mediate_HooksWithoutAssignedReviewers(t *testing.T) {
 
 	collaboratorsClientMock := new(CollaboratorsClientMock)
 
-	collaboratorsClientMock.On("GetCollaborators", "blamewarrior_user/public-repo").Return(collaborators, nil)
+	collaboratorsClientMock.On("ListCollaborator", "blamewarrior_user/public-repo").Return(collaborators, nil)
 
 	webClientMock := new(WebClientMock)
 
@@ -230,6 +246,84 @@ func TestHooksMediator_Mediate_ClosedPullRequest(t *testing.T) {
 	m.Mediate("pull_request", []byte(closedPullRequestHookPayload))
 
 	reviewersService.AssertExpectations(t)
+}
+
+func TestMediator_Mediate_AddColaborator(t *testing.T) {
+
+	collaborator := &gh.Collaborator{
+		Id:    583231,
+		Login: "octocat",
+		Admin: false,
+	}
+
+	payloadServiceMock := new(PayloadServiceMock)
+
+	payloadServiceMock.On("Save", "").Return(nil)
+
+	collaboratorsClientMock := new(CollaboratorsClientMock)
+
+	collaboratorsClientMock.On("AddCollaborator", "baxterthehacker/public-repo", collaborator).Return(nil)
+
+	webClientMock := new(WebClientMock)
+
+	reviewersService := new(ReviewersServiceMock)
+
+	m := hooks.NewMediatorService(payloadServiceMock, webClientMock, collaboratorsClientMock, reviewersService)
+	m.Mediate("member", []byte(fmt.Sprintf(pullRequestPayloadWithMember, "added")))
+
+	collaboratorsClientMock.AssertExpectations(t)
+}
+
+func TestMediator_Mediate_EditColaborator(t *testing.T) {
+
+	collaborator := &gh.Collaborator{
+		Id:    583231,
+		Login: "octocat",
+		Admin: false,
+	}
+
+	payloadServiceMock := new(PayloadServiceMock)
+
+	payloadServiceMock.On("Save", "").Return(nil)
+
+	collaboratorsClientMock := new(CollaboratorsClientMock)
+
+	collaboratorsClientMock.On("EditCollaborator", "baxterthehacker/public-repo", collaborator).Return(nil)
+
+	webClientMock := new(WebClientMock)
+
+	reviewersService := new(ReviewersServiceMock)
+
+	m := hooks.NewMediatorService(payloadServiceMock, webClientMock, collaboratorsClientMock, reviewersService)
+	m.Mediate("member", []byte(fmt.Sprintf(pullRequestPayloadWithMember, "edited")))
+
+	collaboratorsClientMock.AssertExpectations(t)
+}
+
+func TestMediator_Mediate_DeleteColaborator(t *testing.T) {
+
+	collaborator := &gh.Collaborator{
+		Id:    583231,
+		Login: "octocat",
+		Admin: false,
+	}
+
+	payloadServiceMock := new(PayloadServiceMock)
+
+	payloadServiceMock.On("Save", "").Return(nil)
+
+	collaboratorsClientMock := new(CollaboratorsClientMock)
+
+	collaboratorsClientMock.On("DeleteCollaborator", "baxterthehacker/public-repo", collaborator.Login).Return(nil)
+
+	webClientMock := new(WebClientMock)
+
+	reviewersService := new(ReviewersServiceMock)
+
+	m := hooks.NewMediatorService(payloadServiceMock, webClientMock, collaboratorsClientMock, reviewersService)
+	m.Mediate("member", []byte(fmt.Sprintf(pullRequestPayloadWithMember, "deleted")))
+
+	collaboratorsClientMock.AssertExpectations(t)
 }
 
 const (
@@ -1462,4 +1556,34 @@ const (
     "id": 234
   }
 }`
+
+	pullRequestPayloadWithMember = `
+  {
+  "action": "%s",
+  "member": {
+    "login": "octocat",
+    "id": 583231,
+    "avatar_url": "https://avatars.githubusercontent.com/u/583231?v=3",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/octocat",
+    "html_url": "https://github.com/octocat",
+    "followers_url": "https://api.github.com/users/octocat/followers",
+    "following_url": "https://api.github.com/users/octocat/following{/other_user}",
+    "gists_url": "https://api.github.com/users/octocat/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/octocat/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/octocat/subscriptions",
+    "organizations_url": "https://api.github.com/users/octocat/orgs",
+    "repos_url": "https://api.github.com/users/octocat/repos",
+    "events_url": "https://api.github.com/users/octocat/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/octocat/received_events",
+    "type": "User",
+    "site_admin": false
+  },
+  "repository": {
+    "id": 35129377,
+    "name": "public-repo",
+    "full_name": "baxterthehacker/public-repo"
+  }
+}
+`
 )

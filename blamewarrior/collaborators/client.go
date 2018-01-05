@@ -16,6 +16,7 @@
 package collaborators
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -25,7 +26,10 @@ import (
 )
 
 type Client interface {
-	GetCollaborators(repositoryFullName string) ([]gh.Collaborator, error)
+	ListCollaborator(repositoryFullName string) ([]gh.Collaborator, error)
+	AddCollaborator(repositoryFullName string, collaborator *gh.Collaborator) error
+	EditCollaborator(repositoryFullName string, collaborator *gh.Collaborator) error
+	DeleteCollaborator(repositoryFullName, login string) error
 }
 
 type CollaboratorsClient struct {
@@ -42,7 +46,7 @@ func NewClient() *CollaboratorsClient {
 	return client
 }
 
-func (client *CollaboratorsClient) GetCollaborators(repositoryFullName string) ([]gh.Collaborator, error) {
+func (client *CollaboratorsClient) ListCollaborator(repositoryFullName string) ([]gh.Collaborator, error) {
 
 	requestUrl := fmt.Sprintf("%s/%s/collaborators", client.BaseURL, repositoryFullName)
 
@@ -69,4 +73,45 @@ func (client *CollaboratorsClient) GetCollaborators(repositoryFullName string) (
 	}
 
 	return collaborators, nil
+}
+
+func (client *CollaboratorsClient) AddCollaborator(repositoryFullName string, collaborator *gh.Collaborator) error {
+	b, err := json.Marshal(collaborator)
+	if err != nil {
+		return err
+	}
+
+	requestUrl := fmt.Sprintf("%s/%s/collaborators", client.BaseURL, repositoryFullName)
+
+	response, err := client.c.Post(requestUrl, "application/json", bytes.NewBuffer(b))
+
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusCreated {
+		return fmt.Errorf("Unable to add collaborator for %s, status_code=%d", repositoryFullName, response.StatusCode)
+	}
+
+	return nil
+}
+
+func (client *CollaboratorsClient) DeleteCollaborator(repositoryFullName, login string) error {
+	requestUrl := fmt.Sprintf("%s/%s/collaborators/%s", client.BaseURL, repositoryFullName, login)
+
+	req, err := http.NewRequest("DELETE", requestUrl, nil)
+	if err != nil {
+		return err
+	}
+
+	response, err := client.c.Do(req)
+
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("Unable to delete collaborator for %s, status_code=%d", repositoryFullName, response.StatusCode)
+	}
+	return nil
 }

@@ -63,15 +63,39 @@ func (service *MediatorService) Mediate(event string, payload []byte) (err error
 	switch event {
 	case "pull_request":
 		err = service.handlePullRequestPayload(payload)
-		if err != nil {
-			if err = service.payloads.Save(string(payload)); err != nil {
-				return err
-			}
+	case "member":
+		err = service.handleMemberPayload(payload)
+	}
+
+	if err != nil {
+		if err = service.payloads.Save(string(payload)); err != nil {
 			return err
 		}
+		return err
 	}
 
 	return nil
+}
+
+func (service *MediatorService) handleMemberPayload(payload []byte) (err error) {
+	ghMemberHook := new(gh.GithubMemberHook)
+
+	if err = json.Unmarshal(payload, &ghMemberHook); err != nil {
+		return err
+	}
+
+	memberRepositoryName := ghMemberHook.Repository.FullName
+	member := ghMemberHook.Member
+
+	switch ghMemberHook.Action {
+	case "added":
+		err = service.collaboratorsClient.AddCollaborator(memberRepositoryName, &member)
+	case "edited":
+		err = service.collaboratorsClient.EditCollaborator(memberRepositoryName, &member)
+	case "deleted":
+		err = service.collaboratorsClient.DeleteCollaborator(memberRepositoryName, ghMemberHook.Member.Login)
+	}
+	return err
 }
 
 func (service *MediatorService) handlePullRequestPayload(payload []byte) (err error) {
@@ -85,7 +109,7 @@ func (service *MediatorService) handlePullRequestPayload(payload []byte) (err er
 	pullRequest := bw.NewPullRequestFromGithubHook(ghPullRequestHook)
 
 	if len(pullRequest.Reviewers) == 0 {
-		listCollaborators, err := service.collaboratorsClient.GetCollaborators(hookRepositoryName)
+		listCollaborators, err := service.collaboratorsClient.ListCollaborator(hookRepositoryName)
 
 		reviewer := service.pickCollaboratorFrom(listCollaborators)
 		reviewers := []gh.Collaborator{*reviewer}
