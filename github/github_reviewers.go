@@ -16,6 +16,9 @@
 package github
 
 import (
+	"fmt"
+	"net/http"
+
 	"github.com/blamewarrior/hooks/blamewarrior/tokens"
 	gh "github.com/google/go-github/github"
 )
@@ -66,16 +69,38 @@ func (service *GithubReviewers) ReviewComments(ctx Context, repoFullName string,
 
 	owner, repo := SplitRepositoryName(repoFullName)
 
-	ghComments, _, err := api.PullRequests.ListComments(ctx, owner, repo, pullNumber, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	reviewComments := make([]ReviewComment, 0)
 
-	for _, comment := range ghComments {
-		reviewComment := ReviewComment(*comment)
-		reviewComments = append(reviewComments, reviewComment)
+	opt := &gh.PullRequestListCommentsOptions{
+		ListOptions: gh.ListOptions{PerPage: 100},
+	}
+	for {
+		ghComments, resp, err := api.PullRequests.ListComments(ctx, owner, repo, pullNumber, opt)
+		if err != nil {
+			if err != nil {
+				switch err.(type) {
+				case *gh.RateLimitError:
+					return nil, ErrRateLimitReached
+				case *gh.ErrorResponse:
+					apiErr := err.(*gh.ErrorResponse)
+					if apiErr.Response.StatusCode == http.StatusNotFound {
+						return nil, ErrNoSuchRepository
+					}
+				}
+
+				return nil, fmt.Errorf("request failed: %s", err)
+			}
+		}
+
+		for _, comment := range ghComments {
+			reviewComment := ReviewComment(*comment)
+			reviewComments = append(reviewComments, reviewComment)
+		}
+
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
 	}
 
 	return reviewComments, nil
