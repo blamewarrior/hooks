@@ -30,19 +30,8 @@ import (
 	api "github.com/google/go-github/github"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type tokenServiceMock struct {
-	mock.Mock
-}
-
-func (tsMock *tokenServiceMock) GetToken() (string, error) {
-	args := tsMock.Called()
-	return args.String(0), args.Error(1)
-
-}
 
 func TestTrackRepositoryPullRequests(t *testing.T) {
 	mux, baseURL, teardown := setup()
