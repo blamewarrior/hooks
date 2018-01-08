@@ -20,12 +20,13 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/blamewarrior/hooks/blamewarrior/tokens"
 	"github.com/blamewarrior/hooks/github"
 )
 
 type TrackingHandler struct {
 	hostname string
+
+	repositories github.Repositories
 }
 
 func (handler *TrackingHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -35,13 +36,9 @@ func (handler *TrackingHandler) ServeHTTP(w http.ResponseWriter, req *http.Reque
 
 	fullName := fmt.Sprintf("%s/%s", username, repo)
 
-	tokenClient := tokens.NewTokenClient("blamewarrior")
-
-	repositories := github.NewGithubRepositories(tokenClient)
-
 	trackingAction := req.URL.Query().Get(":action")
 
-	err := handler.DoAction(repositories, fullName, trackingAction)
+	err := handler.DoAction(fullName, trackingAction)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -50,18 +47,18 @@ func (handler *TrackingHandler) ServeHTTP(w http.ResponseWriter, req *http.Reque
 
 }
 
-func (handler *TrackingHandler) DoAction(repos github.Repositories, repoFullName, action string) (err error) {
+func (handler *TrackingHandler) DoAction(repoFullName, action string) (err error) {
 
 	switch action {
 	case "track":
-		err = repos.Track(
+		err = handler.repositories.Track(
 			github.Context{},
 			repoFullName,
 			fmt.Sprintf("https://%s/%s/webhook", handler.hostname, repoFullName),
 		)
 		return
 	case "untrack":
-		err = repos.Untrack(
+		err = handler.repositories.Untrack(
 			github.Context{},
 			repoFullName,
 			fmt.Sprintf("https://%s/%s/webhook", handler.hostname, repoFullName),
@@ -73,8 +70,9 @@ func (handler *TrackingHandler) DoAction(repos github.Repositories, repoFullName
 	}
 }
 
-func NewTrackingHandler(hostname string) *TrackingHandler {
+func NewTrackingHandler(hostname string, repositories github.Repositories) *TrackingHandler {
 	return &TrackingHandler{
-		hostname: hostname,
+		hostname:     hostname,
+		repositories: repositories,
 	}
 }

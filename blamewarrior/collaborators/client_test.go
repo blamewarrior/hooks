@@ -86,6 +86,41 @@ func TestAddCollaborator(t *testing.T) {
 	}
 }
 
+func TestEditCollaborator(t *testing.T) {
+	results := []struct {
+		ResponseStatus int
+		Collaborator   *gh.Collaborator
+		ResponseError  error
+	}{
+		{ResponseStatus: http.StatusOK, Collaborator: &gh.Collaborator{Id: 123, Admin: true, Login: "test_user"}, ResponseError: nil},
+		{ResponseStatus: http.StatusInternalServerError, Collaborator: nil, ResponseError: errors.New(
+			"Unable to edit collaborator for blamewarrior/test_repo, status_code=500",
+		)},
+	}
+
+	for _, result := range results {
+		testAPIEndpoint, mux, teardown := setup()
+
+		mux.HandleFunc("/blamewarrior/test_repo/collaborators", func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "PUT", r.Method)
+			w.WriteHeader(result.ResponseStatus)
+			fmt.Fprint(w, `[{
+                    "id": 123,
+                    "admin": true,
+                    "login": "test_user"
+                }]`)
+		})
+
+		client := collaborators.NewClient()
+		client.BaseURL = testAPIEndpoint
+
+		err := client.EditCollaborator("blamewarrior/test_repo", result.Collaborator)
+		assert.Equal(t, result.ResponseError, err)
+
+		teardown()
+	}
+}
+
 func TestDeleteCollaborator(t *testing.T) {
 	results := []struct {
 		ResponseStatus int

@@ -71,9 +71,9 @@ func SplitRepositoryName(fullName string) (owner, repo string) {
 	return fullName[0:sep], fullName[sep+1:]
 }
 
-func initAPIClient(ctx Context, tokenClient tokens.Client) (*gh.Client, error) {
+func initAPIClient(ctx Context, tokenClient tokens.Client, owner string) (*gh.Client, error) {
 
-	token, err := tokenClient.GetToken()
+	token, err := tokenClient.GetToken(owner)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get token to init API client: %s", err)

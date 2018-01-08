@@ -40,7 +40,7 @@ func TestGithubReviewers_RequestReviewers(t *testing.T) {
 
 	ts := new(tokenServiceMock)
 
-	ts.On("GetToken").Return("test-token", nil)
+	ts.On("GetToken", "octocat").Return("test-token", nil)
 
 	pullRequestNumber := 1347
 
@@ -71,7 +71,7 @@ func TestGithubReviewers_ReviewComments(t *testing.T) {
 
 	ts := new(tokenServiceMock)
 
-	ts.On("GetToken").Return("test-token", nil)
+	ts.On("GetToken", "octocat").Return("test-token", nil)
 
 	pullRequestNumber := 1347
 

@@ -16,19 +16,30 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/blamewarrior/hooks"
+	"github.com/blamewarrior/hooks/blamewarrior/collaborators"
+	"github.com/blamewarrior/hooks/blamewarrior/tokens"
+	"github.com/blamewarrior/hooks/blamewarrior/web"
+	"github.com/blamewarrior/hooks/github"
 	"github.com/bmizerany/pat"
+	"github.com/go-redis/redis"
 )
 
 func main() {
-
 	mux := pat.New()
 
-	mux.Post("/:action/:username/:repo", NewTrackingHandler("blamewarrior.com"))
+	tokenClient := tokens.NewTokenClient()
 
-	mux.Post("/:username/:repo/webhook", new(HooksPayloadHandler))
+	repositories := github.NewGithubRepositories(tokenClient)
+	mux.Post("/:action/:username/:repo", NewTrackingHandler("blamewarrior.com", repositories))
+
+	mediator := initMediator(tokenClient)
+	mux.Post("/:username/:repo/webhook", NewHooksPayloadHandler(mediator))
 
 	http.Handle("/", mux)
 
@@ -38,4 +49,22 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
+}
+
+func initMediator(tokenClient tokens.Client) hooks.Mediator {
+	opts := &redis.Options{
+		Addr:     fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT")),
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	}
+
+	redisClient := redis.NewClient(opts)
+	payloadRepo := hooks.NewPayloadRepository(redisClient)
+
+	webClient := web.NewClient()
+	collaboratorsClient := collaborators.NewClient()
+
+	reviewersService := github.NewGithubReviewers(tokenClient)
+
+	return hooks.NewMediatorService(payloadRepo, webClient, collaboratorsClient, reviewersService)
 }

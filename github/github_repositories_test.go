@@ -56,7 +56,7 @@ func TestTrackRepositoryPullRequests(t *testing.T) {
 
 	ts := new(tokenServiceMock)
 
-	ts.On("GetToken").Return("test-token", nil)
+	ts.On("GetToken", "blamewarrior").Return("test-token", nil)
 
 	githubRepos := github.NewGithubRepositories(ts)
 
@@ -85,7 +85,7 @@ func TestUntrackRepositoryPullRequests(t *testing.T) {
 
 	ts := new(tokenServiceMock)
 
-	ts.On("GetToken").Return("test-token", nil)
+	ts.On("GetToken", "blamewarrior").Return("test-token", nil)
 
 	githubRepos := github.NewGithubRepositories(ts)
 

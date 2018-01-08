@@ -61,7 +61,7 @@ func TestTrackingHandler_DoAction(t *testing.T) {
 		"https://blamewarrior.com/blamewarrior/hooks/webhook",
 	).Return(nil)
 
-	handler := main.NewTrackingHandler("blamewarrior.com")
+	handler := main.NewTrackingHandler("blamewarrior.com", reposService)
 
 	suits := []struct {
 		Action string
@@ -83,7 +83,7 @@ func TestTrackingHandler_DoAction(t *testing.T) {
 	}
 
 	for _, suits := range suits {
-		err := handler.DoAction(reposService, "blamewarrior/hooks", suits.Action)
+		err := handler.DoAction("blamewarrior/hooks", suits.Action)
 		assert.Equal(t, suits.Err, err)
 	}
 

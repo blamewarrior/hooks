@@ -44,12 +44,12 @@ func (service *GithubReviewers) RequestReviewers(ctx Context, repoFullName strin
 		reviewersRequest.Reviewers = append(reviewersRequest.Reviewers, reviewer.Login)
 	}
 
-	api, err := initAPIClient(ctx, service.tokenClient)
+	owner, repo := SplitRepositoryName(repoFullName)
+
+	api, err := initAPIClient(ctx, service.tokenClient, owner)
 	if err != nil {
 		return err
 	}
-
-	owner, repo := SplitRepositoryName(repoFullName)
 
 	_, _, err = api.PullRequests.RequestReviewers(ctx, owner, repo, pullNumber, reviewersRequest)
 
@@ -61,13 +61,12 @@ func (service *GithubReviewers) RequestReviewers(ctx Context, repoFullName strin
 }
 
 func (service *GithubReviewers) ReviewComments(ctx Context, repoFullName string, pullNumber int) ([]ReviewComment, error) {
+	owner, repo := SplitRepositoryName(repoFullName)
 
-	api, err := initAPIClient(ctx, service.tokenClient)
+	api, err := initAPIClient(ctx, service.tokenClient, owner)
 	if err != nil {
 		return nil, err
 	}
-
-	owner, repo := SplitRepositoryName(repoFullName)
 
 	reviewComments := make([]ReviewComment, 0)
 

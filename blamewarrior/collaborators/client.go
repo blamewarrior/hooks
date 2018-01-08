@@ -96,6 +96,32 @@ func (client *CollaboratorsClient) AddCollaborator(repositoryFullName string, co
 	return nil
 }
 
+func (client *CollaboratorsClient) EditCollaborator(repositoryFullName string, collaborator *gh.Collaborator) error {
+	b, err := json.Marshal(collaborator)
+	if err != nil {
+		return err
+	}
+
+	requestUrl := fmt.Sprintf("%s/%s/collaborators", client.BaseURL, repositoryFullName)
+
+	req, err := http.NewRequest("PUT", requestUrl, bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+
+	response, err := client.c.Do(req)
+
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("Unable to edit collaborator for %s, status_code=%d", repositoryFullName, response.StatusCode)
+	}
+
+	return nil
+}
+
 func (client *CollaboratorsClient) DeleteCollaborator(repositoryFullName, login string) error {
 	requestUrl := fmt.Sprintf("%s/%s/collaborators/%s", client.BaseURL, repositoryFullName, login)
 

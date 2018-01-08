@@ -48,7 +48,7 @@ func NewGithubRepositories(tokenClient tokens.Client) *GithubRepositories {
 func (service *GithubRepositories) Track(ctx Context, repoFullName, callbackURL string) (err error) {
 	owner, name := SplitRepositoryName(repoFullName)
 
-	api, err := initAPIClient(ctx, service.tokenClient)
+	api, err := initAPIClient(ctx, service.tokenClient, owner)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (service *GithubRepositories) Track(ctx Context, repoFullName, callbackURL 
 func (service *GithubRepositories) Untrack(ctx Context, repoFullName, callbackURL string) (err error) {
 	owner, name := SplitRepositoryName(repoFullName)
 
-	api, err := initAPIClient(ctx, service.tokenClient)
+	api, err := initAPIClient(ctx, service.tokenClient, owner)
 	if err != nil {
 		return err
 	}
