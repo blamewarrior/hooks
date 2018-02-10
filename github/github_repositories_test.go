@@ -30,19 +30,8 @@ import (
 	api "github.com/google/go-github/github"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type tokenServiceMock struct {
-	mock.Mock
-}
-
-func (tsMock *tokenServiceMock) GetToken() (string, error) {
-	args := tsMock.Called()
-	return args.String(0), args.Error(1)
-
-}
 
 func TestTrackRepositoryPullRequests(t *testing.T) {
 	mux, baseURL, teardown := setup()
@@ -67,15 +56,15 @@ func TestTrackRepositoryPullRequests(t *testing.T) {
 
 	ts := new(tokenServiceMock)
 
-	ts.On("GetToken").Return("test-token", nil)
+	ts.On("GetToken", "blamewarrior").Return("test-token", nil)
 
 	githubRepos := github.NewGithubRepositories(ts)
 
-	githubRepos.BaseURL = baseURL
-
 	callbackURL := "https://example.com/blamewarrior/hooks/webhook"
 
-	err := githubRepos.Track(context.Background(), "blamewarrior/hooks", callbackURL)
+	ctx := github.Context{context.Background(), baseURL}
+
+	err := githubRepos.Track(ctx, "blamewarrior/hooks", callbackURL)
 	require.NoError(t, err)
 
 }
@@ -96,15 +85,15 @@ func TestUntrackRepositoryPullRequests(t *testing.T) {
 
 	ts := new(tokenServiceMock)
 
-	ts.On("GetToken").Return("test-token", nil)
+	ts.On("GetToken", "blamewarrior").Return("test-token", nil)
 
 	githubRepos := github.NewGithubRepositories(ts)
 
-	githubRepos.BaseURL = baseURL
+	ctx := github.Context{context.Background(), baseURL}
 
 	callbackURL := "https://example.com/blamewarrior/hooks/webhook"
 
-	err := githubRepos.Untrack(context.Background(), "blamewarrior/hooks", callbackURL)
+	err := githubRepos.Untrack(ctx, "blamewarrior/hooks", callbackURL)
 	require.NoError(t, err)
 
 }
@@ -113,7 +102,7 @@ func setup() (mux *http.ServeMux, baseURL *url.URL, teardownFn func()) {
 	mux = http.NewServeMux()
 	server := httptest.NewServer(mux)
 
-	url, _ := url.Parse(server.URL)
+	url, _ := url.Parse(fmt.Sprintf("%s/", server.URL))
 
 	return mux, url, server.Close
 }

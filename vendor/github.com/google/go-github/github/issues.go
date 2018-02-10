@@ -23,10 +23,12 @@ type IssuesService service
 // but not every issue is a pull request. Some endpoints, events, and webhooks
 // may also return pull requests via this struct. If PullRequestLinks is nil,
 // this is an issue, and if PullRequestLinks is not nil, this is a pull request.
+// The IsPullRequest helper method can be used to check that.
 type Issue struct {
 	ID               *int              `json:"id,omitempty"`
 	Number           *int              `json:"number,omitempty"`
 	State            *string           `json:"state,omitempty"`
+	Locked           *bool             `json:"locked,omitempty"`
 	Title            *string           `json:"title,omitempty"`
 	Body             *string           `json:"body,omitempty"`
 	User             *User             `json:"user,omitempty"`
@@ -36,8 +38,13 @@ type Issue struct {
 	ClosedAt         *time.Time        `json:"closed_at,omitempty"`
 	CreatedAt        *time.Time        `json:"created_at,omitempty"`
 	UpdatedAt        *time.Time        `json:"updated_at,omitempty"`
+	ClosedBy         *User             `json:"closed_by,omitempty"`
 	URL              *string           `json:"url,omitempty"`
 	HTMLURL          *string           `json:"html_url,omitempty"`
+	CommentsURL      *string           `json:"comments_url,omitempty"`
+	EventsURL        *string           `json:"events_url,omitempty"`
+	LabelsURL        *string           `json:"labels_url,omitempty"`
+	RepositoryURL    *string           `json:"repository_url,omitempty"`
 	Milestone        *Milestone        `json:"milestone,omitempty"`
 	PullRequestLinks *PullRequestLinks `json:"pull_request,omitempty"`
 	Repository       *Repository       `json:"repository,omitempty"`
@@ -51,6 +58,13 @@ type Issue struct {
 
 func (i Issue) String() string {
 	return Stringify(i)
+}
+
+// IsPullRequest reports whether the issue is also a pull request. It uses the
+// method recommended by GitHub's API documentation, which is to check whether
+// PullRequestLinks is non-nil.
+func (i Issue) IsPullRequest() bool {
+	return i.PullRequestLinks != nil
 }
 
 // IssueRequest represents a request to create/edit an issue.
@@ -95,7 +109,7 @@ type IssueListOptions struct {
 }
 
 // PullRequestLinks object is added to the Issue object when it's an issue included
-// in the IssueCommentEvent webhook payload, if the webhooks is fired by a comment on a PR
+// in the IssueCommentEvent webhook payload, if the webhook is fired by a comment on a PR.
 type PullRequestLinks struct {
 	URL      *string `json:"url,omitempty"`
 	HTMLURL  *string `json:"html_url,omitempty"`

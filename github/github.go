@@ -14,9 +14,79 @@
 */
 package github
 
-type GithubUser struct {
-	Login     string `json:"login"`
-	ID        string `json:"id"`
-	URL       string `json:"url"`
-	AvatarURL string `json:"avatar_url"`
+import (
+	"context"
+	"fmt"
+	"net/url"
+	"strings"
+
+	"golang.org/x/oauth2"
+
+	"github.com/blamewarrior/hooks/blamewarrior/tokens"
+	gh "github.com/google/go-github/github"
+)
+
+type Context struct {
+	context.Context
+	// BaseURL overrides GitHub API endpoint and is intended for use in tests.
+	BaseURL *url.URL
+}
+
+type Collaborator struct {
+	Id    int    `json:"id"`
+	Login string `json:"login"`
+	Admin bool   `json:"admin"`
+}
+
+type ReviewComment gh.PullRequestComment
+
+type GithubPullRequestHook struct {
+	PullRequest gh.PullRequest `json:"pull_request"`
+
+	Repository struct {
+		FullName string `json:"full_name"`
+	} `json:"repository"`
+
+	RequestedReviewers []Collaborator `json:"requested_reviewers"`
+
+	ReviewComments []ReviewComment `json:"review_comments"`
+}
+
+type GithubMemberHook struct {
+	Action string       `json:"action"`
+	Member Collaborator `json:"member"`
+
+	Repository struct {
+		FullName string `json:"full_name"`
+	} `json:"repository"`
+}
+
+// SplitRepositoryName splits full GitHub repository name into owner and name parts.
+func SplitRepositoryName(fullName string) (owner, repo string) {
+	sep := strings.IndexByte(fullName, '/')
+	if sep <= 0 || sep == len(fullName)-1 {
+		return "", ""
+	}
+
+	return fullName[0:sep], fullName[sep+1:]
+}
+
+func initAPIClient(ctx Context, tokenClient tokens.Client, owner string) (*gh.Client, error) {
+
+	token, err := tokenClient.GetToken(owner)
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to get token to init API client: %s", err)
+	}
+
+	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	oauthClient := oauth2.NewClient(ctx, tokenSource)
+
+	api := gh.NewClient(oauthClient)
+	if ctx.BaseURL != nil {
+		api.BaseURL = ctx.BaseURL
+	}
+
+	return api, nil
+
 }

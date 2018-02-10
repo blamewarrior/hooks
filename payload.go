@@ -13,29 +13,34 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package main
+package hooks
 
 import (
-	"log"
-	"net/http"
-
-	"github.com/bmizerany/pat"
+	"github.com/go-redis/redis"
 )
 
-func main() {
+type Payloads interface {
+	Save(payload string) error
+	List(limit int64) ([]string, error)
+	Delete(payload string) error
+}
 
-	mux := pat.New()
+type PayloadRepository struct {
+	redisClient *redis.Client
+}
 
-	mux.Post("/:action/:username/:repo", NewTrackingHandler("blamewarrior.com"))
+func NewPayloadRepository(redisClient *redis.Client) *PayloadRepository {
+	return &PayloadRepository{redisClient}
+}
 
-	mux.Post("/:username/:repo/webhook", new(HooksPayloadHandler))
+func (repo *PayloadRepository) Save(payload string) (err error) {
+	return repo.redisClient.LPush("hooks", payload).Err()
+}
 
-	http.Handle("/", mux)
+func (repo *PayloadRepository) List(limit int64) ([]string, error) {
+	return repo.redisClient.LRange("hooks", 0, limit).Result()
+}
 
-	log.Printf("blamewarrior users is running on 8080 port")
-
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		log.Panic(err)
-	}
+func (repo *PayloadRepository) Delete(payload string) error {
+	return repo.redisClient.LRem("hooks", 0, payload).Err()
 }
