@@ -20,13 +20,18 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/blamewarrior/hooks/blamewarrior/collaborators"
 	"github.com/blamewarrior/hooks/github"
+	"github.com/go-redis/redis"
 )
 
 type TrackingHandler struct {
 	hostname string
 
-	repositories github.Repositories
+	redisClient *redis.Client
+
+	repositories  github.Repositories
+	collaborators collaborators.Client
 }
 
 func (handler *TrackingHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -51,6 +56,18 @@ func (handler *TrackingHandler) DoAction(repoFullName, action string) (err error
 
 	switch action {
 	case "track":
+		err = handler.collaborators.FetchCollaborators(repoFullName)
+
+		if err != nil {
+			if err = handler.redisClient.LPush(
+				"fetch_collaborators",
+				fmt.Sprintf(`{"type":"fetch", repo_full_name:"%s"}`, repoFullName),
+			).Err(); err != nil {
+				return err
+			}
+			return err
+		}
+
 		err = handler.repositories.Track(
 			github.Context{},
 			repoFullName,
@@ -70,9 +87,11 @@ func (handler *TrackingHandler) DoAction(repoFullName, action string) (err error
 	}
 }
 
-func NewTrackingHandler(hostname string, repositories github.Repositories) *TrackingHandler {
+func NewTrackingHandler(hostname string, repositories github.Repositories, redisClient *redis.Client, collaborators collaborators.Client) *TrackingHandler {
 	return &TrackingHandler{
-		hostname:     hostname,
-		repositories: repositories,
+		hostname:      hostname,
+		repositories:  repositories,
+		redisClient:   redisClient,
+		collaborators: collaborators,
 	}
 }

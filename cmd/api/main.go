@@ -36,9 +36,31 @@ func main() {
 	tokenClient := tokens.NewTokenClient()
 
 	repositories := github.NewGithubRepositories(tokenClient)
-	mux.Post("/:action/:username/:repo", NewTrackingHandler("blamewarrior.com", repositories))
 
-	mediator := initMediator(tokenClient)
+	bwHost := os.Getenv("BW_HOST")
+	if bwHost == "" {
+		log.Fatal("missing bw host (expected to be passed via ENV['BW_HOST'])")
+	}
+
+	opts := &redis.Options{
+		Addr:     fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT")),
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	}
+
+	redisClient := redis.NewClient(opts)
+	collaboratorsClient := collaborators.NewClient()
+
+	mux.Post("/:action/:username/:repo", NewTrackingHandler(bwHost, repositories, redisClient, collaboratorsClient))
+
+	payloadRepo := hooks.NewPayloadRepository(redisClient)
+
+	webClient := web.NewClient()
+
+	reviewersService := github.NewGithubReviewers(tokenClient)
+
+	mediator := hooks.NewMediatorService(payloadRepo, webClient, collaboratorsClient, reviewersService)
+
 	mux.Post("/:username/:repo/webhook", NewHooksPayloadHandler(mediator))
 
 	http.Handle("/", mux)
@@ -49,22 +71,4 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-}
-
-func initMediator(tokenClient tokens.Client) hooks.Mediator {
-	opts := &redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT")),
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	}
-
-	redisClient := redis.NewClient(opts)
-	payloadRepo := hooks.NewPayloadRepository(redisClient)
-
-	webClient := web.NewClient()
-	collaboratorsClient := collaborators.NewClient()
-
-	reviewersService := github.NewGithubReviewers(tokenClient)
-
-	return hooks.NewMediatorService(payloadRepo, webClient, collaboratorsClient, reviewersService)
 }

@@ -26,6 +26,7 @@ import (
 )
 
 type Client interface {
+	FetchCollaborators(repositoryFullName string) error
 	ListCollaborator(repositoryFullName string) ([]gh.Collaborator, error)
 	AddCollaborator(repositoryFullName string, collaborator *gh.Collaborator) error
 	EditCollaborator(repositoryFullName string, collaborator *gh.Collaborator) error
@@ -45,6 +46,55 @@ func NewClient() *CollaboratorsClient {
 
 	return client
 }
+
+func (client *CollaboratorsClient) FetchCollaborators(repositoryFullName string) error {
+	requestUrl := fmt.Sprintf("%s/%s/collaborators", client.BaseURL, repositoryFullName)
+
+	response, err := client.c.Get(requestUrl)
+
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("Unable to get collaborators for %s, status_code=%d", repositoryFullName, response.StatusCode)
+	}
+
+	bodyBytes, err := ioutil.ReadAll(response.Body)
+
+	if err != nil {
+		return fmt.Errorf("Unable to get response for %s", repositoryFullName)
+	}
+
+	collaborators := make([]gh.Collaborator, 0)
+
+	if err = json.Unmarshal(bodyBytes, &collaborators); err != nil {
+		return fmt.Errorf("Unable to unmarshal income json for %s, income=%s", repositoryFullName, string(bodyBytes))
+	}
+
+	return nil
+}
+
+// func (client *CollaboratorsClient) AddCollaborator(repositoryFullName string, collaborator *gh.Collaborator) error {
+// 	b, err := json.Marshal(collaborator)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	requestUrl := fmt.Sprintf("%s/%s/collaborators", client.BaseURL, repositoryFullName)
+
+// 	response, err := client.c.Post(requestUrl, "application/json", bytes.NewBuffer(b))
+
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	if response.StatusCode != http.StatusCreated {
+// 		return fmt.Errorf("Unable to add collaborator for %s, status_code=%d", repositoryFullName, response.StatusCode)
+// 	}
+
+// 	return nil
+// }
 
 func (client *CollaboratorsClient) ListCollaborator(repositoryFullName string) ([]gh.Collaborator, error) {
 

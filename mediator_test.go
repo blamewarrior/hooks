@@ -59,6 +59,11 @@ type CollaboratorsClientMock struct {
 	mock.Mock
 }
 
+func (m *CollaboratorsClientMock) FetchCollaborators(repositoryFullName string) error {
+	args := m.Called(repositoryFullName)
+	return args.Error(0)
+}
+
 func (m *CollaboratorsClientMock) ListCollaborator(repositoryFullName string) ([]gh.Collaborator, error) {
 	args := m.Called(repositoryFullName)
 	return args.Get(0).([]gh.Collaborator), args.Error(1)
